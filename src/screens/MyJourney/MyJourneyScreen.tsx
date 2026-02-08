@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { Card } from '../../components/Card';
-import { StreakBadge } from '../../components/StreakBadge';
+import { AppHeader } from '../../components/AppHeader';
 import { Button } from '../../components/Button';
 import { useAppContext } from '../../services/store';
 import { Prayer, JournalEntry } from '../../types';
@@ -214,11 +213,8 @@ export function MyJourneyScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Journey</Text>
-        {user && <StreakBadge count={user.streakCount} />}
-      </View>
+    <View style={styles.container}>
+      <AppHeader subtitle="My Journey" streakCount={user?.streakCount || 0} />
       <View style={styles.tabBar}>
         {(['overview', 'journal', 'prayers'] as TabType[]).map((tab) => (
           <TouchableOpacity
@@ -236,7 +232,7 @@ export function MyJourneyScreen() {
       {activeTab === 'overview' && renderOverview()}
       {activeTab === 'journal' && renderJournal()}
       {activeTab === 'prayers' && renderPrayers()}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -244,18 +240,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  headerTitle: {
-    ...typography.largeTitle,
-    color: colors.text,
   },
   tabBar: {
     flexDirection: 'row',

@@ -1,26 +1,36 @@
 export const colors = {
-  primary: '#4A6741',      // Forest green - spiritual, grounded
-  primaryLight: '#6B8F5E',
-  primaryDark: '#2F4A28',
-  secondary: '#C8A96E',    // Warm gold - sacred, hopeful
+  primary: '#5C4A3A',        // Warm dark brown
+  primaryLight: '#7B6B5B',
+  primaryDark: '#3E3028',
+  secondary: '#C8A96E',      // Warm gold
   secondaryLight: '#E0C88A',
-  background: '#FAFAF7',   // Warm off-white
+  secondaryDark: '#A8894E',
+  headerBrown: '#6B5B4B',    // Header background
+  headerText: '#C8A96E',     // Gold text in header
+  background: '#FAF7F2',     // Warm cream
   surface: '#FFFFFF',
-  surfaceSecondary: '#F5F3EE',
-  text: '#1A1A1A',
-  textSecondary: '#6B6B6B',
-  textTertiary: '#9B9B9B',
-  border: '#E8E5DE',
-  borderLight: '#F0EDE6',
+  surfaceSecondary: '#F5F0E8',
+  surfaceWarm: '#F0EBE0',
+  text: '#2C2420',
+  textSecondary: '#6B5B4B',
+  textTertiary: '#9B8B7B',
+  textMuted: '#B8A898',
+  border: '#E8E2D8',
+  borderLight: '#F0EBE0',
   error: '#C0392B',
-  success: '#27AE60',
-  warning: '#F39C12',
-  streak: '#E67E22',
-  prayerBlue: '#5B8DB8',
-  amen: '#8E6BBF',
+  success: '#4A8B5C',
+  warning: '#C8A96E',
+  streak: '#C8A96E',         // Gold streak color
+  streakBg: '#F5F0E8',
+  prayerRed: '#C0392B',
+  amenGold: '#C8A96E',
+  thanksRed: '#E74C3C',
+  prayerBlue: '#5B8DB8',    // Kept for backward compat
+  amen: '#C8A96E',
   white: '#FFFFFF',
   black: '#000000',
   overlay: 'rgba(0, 0, 0, 0.5)',
+  completedGreen: '#4A8B5C',
 };
 
 export const typography = {
@@ -43,7 +53,7 @@ export const typography = {
   body: {
     fontSize: 16,
     fontWeight: '400' as const,
-    lineHeight: 24,
+    lineHeight: 26,
   },
   bodyBold: {
     fontSize: 16,
@@ -51,10 +61,9 @@ export const typography = {
     lineHeight: 24,
   },
   scripture: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '400' as const,
     lineHeight: 30,
-    fontStyle: 'italic' as const,
   },
   caption: {
     fontSize: 13,
@@ -65,6 +74,12 @@ export const typography = {
     fontSize: 13,
     fontWeight: '600' as const,
     lineHeight: 18,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    lineHeight: 16,
+    letterSpacing: 1.5,
   },
   small: {
     fontSize: 11,
@@ -94,21 +109,21 @@ export const shadows = {
   sm: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 2,
     elevation: 1,
   },
   md: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
   },
   lg: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 6,
   },
