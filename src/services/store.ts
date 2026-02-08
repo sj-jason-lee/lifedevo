@@ -9,13 +9,8 @@ import {
   Church,
 } from '../types';
 import {
-  mockUser,
-  mockChurch,
   mockDevotionals,
-  mockJournalEntries,
-  mockPrayers,
   mockSharedReflections,
-  mockCompletions,
 } from './mockData';
 import {
   loadPersistedState,
@@ -27,6 +22,7 @@ import {
   persistCompletions,
   clearAllData,
 } from './storage';
+import * as api from './supabaseApi';
 
 export interface AppState {
   user: User | null;
@@ -42,6 +38,8 @@ export interface AppState {
 
 export interface AppActions {
   login: () => void;
+  loginWithEmail: (email: string, password: string) => Promise<string | null>;
+  signUpWithEmail: (email: string, password: string, name: string) => Promise<string | null>;
   logout: () => void;
   getTodayDevotional: () => Devotional | undefined;
   getDevotionalById: (id: string) => Devotional | undefined;
@@ -62,10 +60,10 @@ export const initialState: AppState = {
   church: null,
   isAuthenticated: false,
   devotionals: mockDevotionals,
-  journalEntries: mockJournalEntries,
-  prayers: mockPrayers,
+  journalEntries: [],
+  prayers: [],
   sharedReflections: mockSharedReflections,
-  completions: mockCompletions,
+  completions: [],
   isLoading: true,
 };
 
@@ -79,25 +77,86 @@ export function useAppContext(): AppContextType {
   return context;
 }
 
+// Try to load data from Supabase; returns null if tables don't exist yet
+async function loadSupabaseData(userId: string, churchId?: string) {
+  try {
+    const [journalEntries, prayers, completions] = await Promise.all([
+      api.getJournalEntries(userId),
+      api.getPrayers(userId),
+      api.getCompletions(userId),
+    ]);
+
+    let devotionals: Devotional[] | null = null;
+    let sharedReflections: SharedReflection[] | null = null;
+    if (churchId) {
+      [devotionals, sharedReflections] = await Promise.all([
+        api.getDevotionals(churchId),
+        api.getSharedReflections(churchId),
+      ]);
+    }
+
+    return { journalEntries, prayers, completions, devotionals, sharedReflections };
+  } catch (e) {
+    // Tables likely don't exist yet — fall back gracefully
+    console.log('Supabase data load skipped (tables may not exist yet):', e);
+    return null;
+  }
+}
+
 export function useAppState() {
   const [state, setState] = useState<AppState>(initialState);
   const isInitialized = useRef(false);
 
-  // Load persisted state on mount
+  // Load persisted state and check for Supabase session on mount
   useEffect(() => {
     (async () => {
       try {
+        // First, restore local state from AsyncStorage
         const persisted = await loadPersistedState();
+
+        // Check for existing Supabase session
+        const session = await api.getSession();
+
+        if (session?.user) {
+          // We have a Supabase session — load profile
+          const profile = await api.getProfile(session.user.id);
+          if (profile) {
+            // Try loading data from Supabase
+            const supaData = await loadSupabaseData(profile.id, profile.churchId);
+
+            const church = profile.churchId ? await api.getChurch(profile.churchId) : null;
+
+            setState((prev) => ({
+              ...prev,
+              user: profile,
+              church,
+              isAuthenticated: true,
+              journalEntries: supaData?.journalEntries || persisted.journalEntries || [],
+              prayers: supaData?.prayers || persisted.prayers || [],
+              completions: supaData?.completions || persisted.completions || [],
+              devotionals: supaData?.devotionals || prev.devotionals,
+              sharedReflections: supaData?.sharedReflections || prev.sharedReflections,
+              isLoading: false,
+            }));
+
+            persistAuth(true);
+            persistUser(profile);
+            if (church) persistChurch(church);
+            isInitialized.current = true;
+            return;
+          }
+        }
+
+        // No Supabase session — use AsyncStorage persisted state
         setState((prev) => ({
           ...prev,
           ...persisted,
-          // Always use fresh devotionals/reflections from mock data until we have a backend
           devotionals: prev.devotionals,
           sharedReflections: prev.sharedReflections,
           isLoading: false,
         }));
       } catch (e) {
-        console.warn('Failed to load persisted state:', e);
+        console.warn('Failed to load state:', e);
         setState((prev) => ({ ...prev, isLoading: false }));
       }
       isInitialized.current = true;
@@ -125,28 +184,102 @@ export function useAppState() {
     persistUser(state.user);
   }, [state.user]);
 
+  // Legacy mock login (for demo/testing)
   const login = useCallback(() => {
-    setState((prev) => {
-      const newState = {
-        ...prev,
-        user: mockUser,
-        church: mockChurch,
-        isAuthenticated: true,
-      };
-      // Persist auth state
-      persistAuth(true);
-      persistUser(mockUser);
-      persistChurch(mockChurch);
-      return newState;
-    });
+    const { mockUser, mockChurch, mockJournalEntries, mockPrayers, mockCompletions } = require('./mockData');
+    setState((prev) => ({
+      ...prev,
+      user: mockUser,
+      church: mockChurch,
+      isAuthenticated: true,
+      journalEntries: mockJournalEntries,
+      prayers: mockPrayers,
+      completions: mockCompletions,
+    }));
+    persistAuth(true);
+    persistUser(mockUser);
+    persistChurch(mockChurch);
   }, []);
 
-  const logout = useCallback(() => {
+  // Real Supabase email/password sign in
+  const loginWithEmail = useCallback(async (email: string, password: string): Promise<string | null> => {
+    try {
+      const { session, user: authUser } = await api.signIn(email, password);
+      if (!authUser) return 'Sign in failed';
+
+      const profile = await api.getProfile(authUser.id);
+      if (!profile) return 'Profile not found';
+
+      const church = profile.churchId ? await api.getChurch(profile.churchId) : null;
+      const supaData = await loadSupabaseData(profile.id, profile.churchId);
+
+      setState((prev) => ({
+        ...prev,
+        user: profile,
+        church,
+        isAuthenticated: true,
+        journalEntries: supaData?.journalEntries || [],
+        prayers: supaData?.prayers || [],
+        completions: supaData?.completions || [],
+        devotionals: supaData?.devotionals || prev.devotionals,
+        sharedReflections: supaData?.sharedReflections || prev.sharedReflections,
+      }));
+
+      persistAuth(true);
+      persistUser(profile);
+      if (church) persistChurch(church);
+
+      return null; // no error
+    } catch (e: any) {
+      return e.message || 'Sign in failed';
+    }
+  }, []);
+
+  // Real Supabase email/password sign up
+  const signUpWithEmail = useCallback(async (email: string, password: string, name: string): Promise<string | null> => {
+    try {
+      const { session, user: authUser } = await api.signUp(email, password, name);
+      if (!authUser) return 'Sign up failed';
+
+      // Wait briefly for the trigger to create the profile
+      await new Promise((r) => setTimeout(r, 1000));
+
+      const profile = await api.getProfile(authUser.id);
+      if (!profile) return 'Profile creation failed';
+
+      setState((prev) => ({
+        ...prev,
+        user: profile,
+        church: null,
+        isAuthenticated: true,
+        journalEntries: [],
+        prayers: [],
+        completions: [],
+      }));
+
+      persistAuth(true);
+      persistUser(profile);
+
+      return null; // no error
+    } catch (e: any) {
+      return e.message || 'Sign up failed';
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await api.signOut();
+    } catch (e) {
+      // Ignore sign out errors
+    }
     setState((prev) => ({
       ...prev,
       user: null,
       church: null,
       isAuthenticated: false,
+      journalEntries: [],
+      prayers: [],
+      completions: [],
     }));
     clearAllData();
   }, []);
@@ -178,6 +311,8 @@ export function useAppState() {
   const saveJournalEntry = useCallback(
     (entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>) => {
       const now = new Date().toISOString();
+
+      // Optimistic local update
       setState((prev) => {
         const existing = prev.journalEntries.find(
           (e) =>
@@ -201,6 +336,15 @@ export function useAppState() {
         };
         return { ...prev, journalEntries: [...prev.journalEntries, newEntry] };
       });
+
+      // Fire-and-forget Supabase sync
+      api.upsertJournalEntry({
+        user_id: entry.userId,
+        devotional_id: entry.devotionalId,
+        question_id: entry.questionId,
+        content: entry.content,
+        is_shared: entry.isShared,
+      }).catch((e) => console.log('Supabase journal sync skipped:', e));
     },
     []
   );
@@ -208,6 +352,8 @@ export function useAppState() {
   const savePrayer = useCallback(
     (prayer: Omit<Prayer, 'id' | 'createdAt' | 'prayingCount'>) => {
       const now = new Date().toISOString();
+
+      // Optimistic local update
       setState((prev) => {
         const existing = prev.prayers.find(
           (p) => p.devotionalId === prayer.devotionalId && p.userId === prayer.userId
@@ -228,6 +374,16 @@ export function useAppState() {
         };
         return { ...prev, prayers: [...prev.prayers, newPrayer] };
       });
+
+      // Fire-and-forget Supabase sync
+      api.upsertPrayer({
+        user_id: prayer.userId,
+        user_name: prayer.userName,
+        devotional_id: prayer.devotionalId,
+        content: prayer.content,
+        is_request: prayer.isRequest,
+        is_shared: prayer.isShared,
+      }).catch((e) => console.log('Supabase prayer sync skipped:', e));
     },
     []
   );
@@ -246,6 +402,22 @@ export function useAppState() {
         const newUser = prev.user
           ? { ...prev.user, streakCount: prev.user.streakCount + 1, lastActiveDate: new Date().toISOString().split('T')[0] }
           : null;
+
+        // Fire-and-forget Supabase sync
+        if (prev.user) {
+          api.createCompletion(prev.user.id, {
+            devotional_id: devotionalId,
+            has_journal: hasJournal,
+            has_prayer: hasPrayer,
+            has_shared: hasShared,
+          }).catch((e) => console.log('Supabase completion sync skipped:', e));
+
+          api.updateProfile(prev.user.id, {
+            streak_count: (prev.user.streakCount || 0) + 1,
+            last_active_date: new Date().toISOString().split('T')[0],
+          }).catch((e) => console.log('Supabase streak sync skipped:', e));
+        }
+
         return { ...prev, completions: [...prev.completions, newCompletion], user: newUser };
       });
     },
@@ -258,12 +430,21 @@ export function useAppState() {
   );
 
   const togglePrayerAnswered = useCallback((prayerId: string, answerNote?: string) => {
-    setState((prev) => ({
-      ...prev,
-      prayers: prev.prayers.map((p) =>
-        p.id === prayerId ? { ...p, isAnswered: !p.isAnswered, answerNote: answerNote || p.answerNote } : p
-      ),
-    }));
+    setState((prev) => {
+      const prayer = prev.prayers.find((p) => p.id === prayerId);
+      const newIsAnswered = prayer ? !prayer.isAnswered : true;
+
+      // Fire-and-forget Supabase sync
+      api.togglePrayerAnsweredApi(prayerId, newIsAnswered, answerNote)
+        .catch((e) => console.log('Supabase prayer toggle skipped:', e));
+
+      return {
+        ...prev,
+        prayers: prev.prayers.map((p) =>
+          p.id === prayerId ? { ...p, isAnswered: newIsAnswered, answerNote: answerNote || p.answerNote } : p
+        ),
+      };
+    });
   }, []);
 
   const getUserPrayers = useCallback(
@@ -274,6 +455,8 @@ export function useAppState() {
   return {
     ...state,
     login,
+    loginWithEmail,
+    signUpWithEmail,
     logout,
     getTodayDevotional,
     getDevotionalById,

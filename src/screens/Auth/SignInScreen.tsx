@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../../theme';
@@ -7,19 +7,29 @@ import { Button } from '../../components/Button';
 import { useAppContext } from '../../services/store';
 
 export function SignInScreen({ navigation }: any) {
-  const { login } = useAppContext();
+  const { loginWithEmail, login } = useAppContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Missing Fields', 'Please enter your email and password.');
+      return;
+    }
+
     setLoading(true);
-    // Simulate auth delay
-    setTimeout(() => {
-      login();
-      setLoading(false);
-    }, 800);
+    const error = await loginWithEmail(email.trim(), password);
+    setLoading(false);
+
+    if (error) {
+      Alert.alert('Sign In Failed', error);
+    }
+  };
+
+  const handleDemoLogin = () => {
+    login();
   };
 
   return (
@@ -90,6 +100,10 @@ export function SignInScreen({ navigation }: any) {
               size="lg"
               style={styles.signInButton}
             />
+
+            <TouchableOpacity style={styles.demoButton} onPress={handleDemoLogin}>
+              <Text style={styles.demoButtonText}>Try Demo Mode</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.footer}>
@@ -172,6 +186,15 @@ const styles = StyleSheet.create({
   },
   signInButton: {
     marginTop: spacing.sm,
+  },
+  demoButton: {
+    alignSelf: 'center',
+    paddingVertical: spacing.sm,
+  },
+  demoButtonText: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    textDecorationLine: 'underline',
   },
   footer: {
     flexDirection: 'row',
