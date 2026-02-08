@@ -16,8 +16,8 @@ export function ReactionBar({ reactions, onReact }: ReactionBarProps) {
         onPress={() => onReact?.('praying')}
         activeOpacity={0.7}
       >
-        <Ionicons name="hand-left-outline" size={16} color={colors.prayerBlue} />
-        <Text style={[styles.label, { color: colors.prayerBlue }]}>
+        <Ionicons name="hand-left-outline" size={16} color={colors.prayerRed} />
+        <Text style={[styles.label, { color: colors.prayerRed }]}>
           Praying {reactions.praying > 0 ? `(${reactions.praying})` : ''}
         </Text>
       </TouchableOpacity>
@@ -26,8 +26,8 @@ export function ReactionBar({ reactions, onReact }: ReactionBarProps) {
         onPress={() => onReact?.('amen')}
         activeOpacity={0.7}
       >
-        <Ionicons name="heart-outline" size={16} color={colors.amen} />
-        <Text style={[styles.label, { color: colors.amen }]}>
+        <Ionicons name="heart-outline" size={16} color={colors.amenGold} />
+        <Text style={[styles.label, { color: colors.amenGold }]}>
           Amen {reactions.amen > 0 ? `(${reactions.amen})` : ''}
         </Text>
       </TouchableOpacity>
@@ -36,8 +36,8 @@ export function ReactionBar({ reactions, onReact }: ReactionBarProps) {
         onPress={() => onReact?.('thanks')}
         activeOpacity={0.7}
       >
-        <Ionicons name="thumbs-up-outline" size={16} color={colors.secondary} />
-        <Text style={[styles.label, { color: colors.secondary }]}>
+        <Ionicons name="heart-outline" size={16} color={colors.thanksRed} />
+        <Text style={[styles.label, { color: colors.thanksRed }]}>
           Thanks {reactions.thanks > 0 ? `(${reactions.thanks})` : ''}
         </Text>
       </TouchableOpacity>

@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { Card } from '../../components/Card';
 import { ReactionBar } from '../../components/ReactionBar';
+import { AppHeader } from '../../components/AppHeader';
 import { useAppContext } from '../../services/store';
 import { SharedReflection, Prayer } from '../../types';
 
 type TabType = 'reflections' | 'prayers';
 
 export function CommunityScreen() {
-  const { sharedReflections, prayers, church } = useAppContext();
+  const { user, sharedReflections, prayers, church } = useAppContext();
   const [activeTab, setActiveTab] = useState<TabType>('reflections');
 
   const sharedPrayers = prayers.filter((p) => p.isShared && p.isRequest);
@@ -76,11 +76,8 @@ export function CommunityScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Community</Text>
-        <Text style={styles.headerSubtitle}>{church?.name || 'Your Church'}</Text>
-      </View>
+    <View style={styles.container}>
+      <AppHeader subtitle="Community" streakCount={user?.streakCount || 0} churchName={church?.name} />
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'reflections' && styles.activeTab]}
@@ -156,7 +153,7 @@ export function CommunityScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -164,20 +161,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  headerTitle: {
-    ...typography.largeTitle,
-    color: colors.text,
-  },
-  headerSubtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
   },
   tabBar: {
     flexDirection: 'row',

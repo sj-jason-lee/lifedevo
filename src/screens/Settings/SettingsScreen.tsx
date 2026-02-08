@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
+import { AppHeader } from '../../components/AppHeader';
 import { useAppContext } from '../../services/store';
 
 export function SettingsScreen() {
@@ -21,10 +21,8 @@ export function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Settings</Text>
-      </View>
+    <View style={styles.container}>
+      <AppHeader subtitle="Settings" streakCount={user?.streakCount || 0} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Section */}
         <Card style={styles.profileCard}>
@@ -187,7 +185,7 @@ export function SettingsScreen() {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -195,15 +193,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  headerTitle: {
-    ...typography.largeTitle,
-    color: colors.text,
   },
   content: {
     padding: spacing.lg,

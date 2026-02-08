@@ -64,8 +64,8 @@ function MainTabNavigator() {
             case 'Community':
               iconName = focused ? 'people' : 'people-outline';
               break;
-            case 'My Journey':
-              iconName = focused ? 'compass' : 'compass-outline';
+            case 'Journey':
+              iconName = focused ? 'heart' : 'heart-outline';
               break;
             case 'Settings':
               iconName = focused ? 'settings' : 'settings-outline';
@@ -93,7 +93,7 @@ function MainTabNavigator() {
       <MainTab.Screen name="Today" component={TodayScreen} />
       <MainTab.Screen name="Archive" component={ArchiveNavigator} />
       <MainTab.Screen name="Community" component={CommunityScreen} />
-      <MainTab.Screen name="My Journey" component={MyJourneyScreen} />
+      <MainTab.Screen name="Journey" component={MyJourneyScreen} />
       <MainTab.Screen name="Settings" component={SettingsScreen} />
     </MainTab.Navigator>
   );
