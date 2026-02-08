@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography } from '../theme';
+import { colors } from '../theme';
 import { useAppContext } from '../services/store';
 
 // Auth Screens
@@ -39,7 +39,7 @@ function ArchiveNavigator() {
           title: 'Devotional',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
-          headerTitleStyle: { ...typography.bodyBold, color: colors.text },
+          headerTitleStyle: { fontWeight: '600', fontSize: 16, color: colors.text },
           headerShadowVisible: false,
         }}
       />
@@ -84,7 +84,7 @@ function MainTabNavigator() {
           height: 88,
         },
         tabBarLabelStyle: {
-          ...typography.small,
+          fontSize: 11,
           fontWeight: '500',
           marginTop: 2,
         },
