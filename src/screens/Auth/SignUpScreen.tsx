@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +17,7 @@ import { Button } from '../../components/Button';
 import { useAppContext } from '../../services/store';
 
 export function SignUpScreen({ navigation }: any) {
-  const { login } = useAppContext();
+  const { signUpWithEmail, login } = useAppContext();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,12 +25,27 @@ export function SignUpScreen({ navigation }: any) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      Alert.alert('Missing Fields', 'Please fill in your name, email, and password.');
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
-      login();
-      setLoading(false);
-    }, 800);
+    const error = await signUpWithEmail(email.trim(), password, name.trim());
+    setLoading(false);
+
+    if (error) {
+      Alert.alert('Sign Up Failed', error);
+    }
+  };
+
+  const handleDemoLogin = () => {
+    login();
   };
 
   return (
@@ -91,7 +107,7 @@ export function SignUpScreen({ navigation }: any) {
                 <Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Create a password"
+                  placeholder="Create a password (min 6 chars)"
                   placeholderTextColor={colors.textTertiary}
                   value={password}
                   onChangeText={setPassword}
@@ -111,7 +127,7 @@ export function SignUpScreen({ navigation }: any) {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Church Invite Code</Text>
+              <Text style={styles.label}>Church Invite Code (Optional)</Text>
               <View style={styles.inputWrapper}>
                 <Ionicons name="key-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
                 <TextInput
@@ -125,7 +141,7 @@ export function SignUpScreen({ navigation }: any) {
                 />
               </View>
               <Text style={styles.helperText}>
-                Ask your pastor or church admin for the invite code
+                Ask your pastor or church admin for the invite code. You can also join later.
               </Text>
             </View>
 
@@ -136,6 +152,10 @@ export function SignUpScreen({ navigation }: any) {
               size="lg"
               style={styles.signUpButton}
             />
+
+            <TouchableOpacity style={styles.demoButton} onPress={handleDemoLogin}>
+              <Text style={styles.demoButtonText}>Try Demo Mode</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.footer}>
@@ -214,6 +234,15 @@ const styles = StyleSheet.create({
   },
   signUpButton: {
     marginTop: spacing.sm,
+  },
+  demoButton: {
+    alignSelf: 'center',
+    paddingVertical: spacing.sm,
+  },
+  demoButtonText: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    textDecorationLine: 'underline',
   },
   footer: {
     flexDirection: 'row',
