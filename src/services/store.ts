@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import {
   User,
   Devotional,
@@ -17,6 +17,16 @@ import {
   mockSharedReflections,
   mockCompletions,
 } from './mockData';
+import {
+  loadPersistedState,
+  persistUser,
+  persistChurch,
+  persistAuth,
+  persistJournalEntries,
+  persistPrayers,
+  persistCompletions,
+  clearAllData,
+} from './storage';
 
 export interface AppState {
   user: User | null;
@@ -27,6 +37,7 @@ export interface AppState {
   prayers: Prayer[];
   sharedReflections: SharedReflection[];
   completions: DevotionalCompletion[];
+  isLoading: boolean;
 }
 
 export interface AppActions {
@@ -55,6 +66,7 @@ export const initialState: AppState = {
   prayers: mockPrayers,
   sharedReflections: mockSharedReflections,
   completions: mockCompletions,
+  isLoading: true,
 };
 
 export const AppContext = createContext<AppContextType | null>(null);
@@ -69,14 +81,64 @@ export function useAppContext(): AppContextType {
 
 export function useAppState() {
   const [state, setState] = useState<AppState>(initialState);
+  const isInitialized = useRef(false);
+
+  // Load persisted state on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const persisted = await loadPersistedState();
+        setState((prev) => ({
+          ...prev,
+          ...persisted,
+          // Always use fresh devotionals/reflections from mock data until we have a backend
+          devotionals: prev.devotionals,
+          sharedReflections: prev.sharedReflections,
+          isLoading: false,
+        }));
+      } catch (e) {
+        console.warn('Failed to load persisted state:', e);
+        setState((prev) => ({ ...prev, isLoading: false }));
+      }
+      isInitialized.current = true;
+    })();
+  }, []);
+
+  // Persist user-generated data whenever it changes (skip initial load)
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    persistJournalEntries(state.journalEntries);
+  }, [state.journalEntries]);
+
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    persistPrayers(state.prayers);
+  }, [state.prayers]);
+
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    persistCompletions(state.completions);
+  }, [state.completions]);
+
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    persistUser(state.user);
+  }, [state.user]);
 
   const login = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      user: mockUser,
-      church: mockChurch,
-      isAuthenticated: true,
-    }));
+    setState((prev) => {
+      const newState = {
+        ...prev,
+        user: mockUser,
+        church: mockChurch,
+        isAuthenticated: true,
+      };
+      // Persist auth state
+      persistAuth(true);
+      persistUser(mockUser);
+      persistChurch(mockChurch);
+      return newState;
+    });
   }, []);
 
   const logout = useCallback(() => {
@@ -86,6 +148,7 @@ export function useAppState() {
       church: null,
       isAuthenticated: false,
     }));
+    clearAllData();
   }, []);
 
   const getTodayDevotional = useCallback(() => {
