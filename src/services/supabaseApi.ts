@@ -135,6 +135,19 @@ export async function signUp(email: string, password: string, name: string) {
     options: { data: { name } },
   });
   if (error) throw error;
+
+  // Create profile from app code (avoids reliance on database trigger)
+  if (data.user) {
+    const { error: profileError } = await supabase.from('profiles').upsert({
+      id: data.user.id,
+      name: name,
+      email: email,
+    });
+    if (profileError) {
+      console.warn('Profile creation error (may already exist):', profileError.message);
+    }
+  }
+
   return data;
 }
 

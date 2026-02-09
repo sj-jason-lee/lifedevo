@@ -241,9 +241,7 @@ export function useAppState() {
       const { session, user: authUser } = await api.signUp(email, password, name);
       if (!authUser) return 'Sign up failed';
 
-      // Wait briefly for the trigger to create the profile
-      await new Promise((r) => setTimeout(r, 1000));
-
+      // Profile is created by signUp() in supabaseApi.ts
       const profile = await api.getProfile(authUser.id);
       if (!profile) return 'Profile creation failed';
 

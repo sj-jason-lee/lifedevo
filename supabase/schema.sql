@@ -298,22 +298,6 @@ CREATE TRIGGER journal_entries_updated_at
   BEFORE UPDATE ON journal_entries
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
--- ============================================
--- FUNCTION: Auto-create profile on signup
--- ============================================
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO profiles (id, name, email)
-  VALUES (
-    NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
-    NEW.email
-  );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+-- NOTE: Profile creation is handled by the app code (supabaseApi.ts signUp)
+-- rather than a database trigger, to avoid "database error creating user"
+-- issues with trigger permissions on auth.users.
