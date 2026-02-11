@@ -15,7 +15,10 @@ import { SignUpScreen } from "../screens/Auth/SignUpScreen";
 import { ChurchSetupScreen } from '../screens/Church/ChurchSetupScreen';
 
 // Pastor Screens
+import { ManageDevotionalsScreen } from "../screens/Pastor/ManageDevotionalsScreen";
 import { CreateDevotionalScreen } from "../screens/Pastor/CreateDevotionalScreen";
+import { BatchSetupScreen } from "../screens/Pastor/BatchSetupScreen";
+import { BatchListScreen } from "../screens/Pastor/BatchListScreen";
 
 // Main Screens
 import { TodayScreen } from "../screens/Today/TodayScreen";
@@ -112,17 +115,12 @@ function MainTabNavigator() {
 
 function MainNavigator() {
   return (
-    <MainStack.Navigator>
-      <MainStack.Screen
-        name="Tabs"
-        component={MainTabNavigator}
-        options={{ headerShown: false }}
-      />
-      <MainStack.Screen
-        name="CreateDevotional"
-        component={CreateDevotionalScreen}
-        options={{ headerShown: false, presentation: 'modal' }}
-      />
+    <MainStack.Navigator screenOptions={{ headerShown: false }}>
+      <MainStack.Screen name="Tabs" component={MainTabNavigator} />
+      <MainStack.Screen name="ManageDevotionals" component={ManageDevotionalsScreen} />
+      <MainStack.Screen name="CreateDevotional" component={CreateDevotionalScreen} />
+      <MainStack.Screen name="BatchSetup" component={BatchSetupScreen} />
+      <MainStack.Screen name="BatchList" component={BatchListScreen} />
     </MainStack.Navigator>
   );
 }

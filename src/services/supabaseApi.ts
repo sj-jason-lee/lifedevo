@@ -297,6 +297,34 @@ export async function getDevotionals(churchId: string): Promise<Devotional[]> {
   return devRows.map((d: any) => mapDevotional(d, questionsByDev.get(d.id) || []));
 }
 
+// Fetch ALL devotionals for a church (for pastor management view)
+export async function getAllChurchDevotionals(churchId: string): Promise<Devotional[]> {
+  const { data: devRows, error: devError } = await supabase
+    .from('devotionals')
+    .select('*')
+    .eq('church_id', churchId)
+    .order('published_at', { ascending: true });
+  if (devError) throw devError;
+  if (!devRows || devRows.length === 0) return [];
+
+  const devIds = devRows.map((d: any) => d.id);
+  const { data: qRows } = await supabase
+    .from('questions')
+    .select('*')
+    .in('devotional_id', devIds)
+    .order('order', { ascending: true });
+
+  const questionsByDev = new Map<string, Question[]>();
+  (qRows || []).forEach((q: any) => {
+    const mapped = mapQuestion(q);
+    const list = questionsByDev.get(mapped.devotionalId) || [];
+    list.push(mapped);
+    questionsByDev.set(mapped.devotionalId, list);
+  });
+
+  return devRows.map((d: any) => mapDevotional(d, questionsByDev.get(d.id) || []));
+}
+
 export async function createDevotional(devotional: {
   church_id: string;
   author_id: string;
@@ -306,12 +334,13 @@ export async function createDevotional(devotional: {
   reflection: string;
   prayer_prompt: string;
   status: string;
+  published_at?: string;
 }, questionTexts: string[]): Promise<Devotional> {
   const { data, error } = await supabase
     .from('devotionals')
     .insert({
       ...devotional,
-      published_at: devotional.status === 'published' ? new Date().toISOString() : null,
+      published_at: devotional.published_at || new Date().toISOString(),
     })
     .select()
     .single();

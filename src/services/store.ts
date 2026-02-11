@@ -57,7 +57,9 @@ export interface AppActions {
     reflection: string;
     prayerPrompt: string;
     questions: string[];
+    publishDate?: string;
   }) => Promise<string | null>;
+  loadAllDevotionals: () => Promise<Devotional[]>;
   createChurch: (name: string) => Promise<string | null>;
   joinChurch: (inviteCode: string) => Promise<string | null>;
   leaveChurch: () => void;
@@ -474,11 +476,16 @@ export function useAppState() {
     reflection: string;
     prayerPrompt: string;
     questions: string[];
+    publishDate?: string;
   }): Promise<string | null> => {
     try {
       const userId = state.user?.id;
       const churchId = state.church?.id;
       if (!userId || !churchId) return 'Not signed in or no church';
+
+      const publishAt = data.publishDate
+        ? new Date(data.publishDate + 'T08:00:00').toISOString()
+        : new Date().toISOString();
 
       const devotional = await api.createDevotional({
         church_id: churchId,
@@ -489,11 +496,14 @@ export function useAppState() {
         reflection: data.reflection,
         prayer_prompt: data.prayerPrompt,
         status: 'published',
+        published_at: publishAt,
       }, data.questions);
 
       setState((prev) => ({
         ...prev,
-        devotionals: [devotional, ...prev.devotionals],
+        devotionals: [...prev.devotionals, devotional].sort(
+          (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+        ),
       }));
 
       return null;
@@ -501,6 +511,18 @@ export function useAppState() {
       return e.message || 'Failed to publish devotional';
     }
   }, [state.user, state.church]);
+
+  const loadAllDevotionals = useCallback(async (): Promise<Devotional[]> => {
+    try {
+      const churchId = state.church?.id;
+      if (!churchId) return [];
+      const all = await api.getAllChurchDevotionals(churchId);
+      return all;
+    } catch (e) {
+      console.log('Failed to load all devotionals:', e);
+      return state.devotionals;
+    }
+  }, [state.church, state.devotionals]);
 
   const createChurch = useCallback(async (name: string): Promise<string | null> => {
     try {
@@ -591,6 +613,7 @@ export function useAppState() {
     togglePrayerAnswered,
     getUserPrayers,
     publishDevotional,
+    loadAllDevotionals,
     createChurch,
     joinChurch,
     leaveChurch,
