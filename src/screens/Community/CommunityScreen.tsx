@@ -1,28 +1,34 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius } from '../../theme';
-import { Card } from '../../components/Card';
-import { ReactionBar } from '../../components/ReactionBar';
-import { AppHeader } from '../../components/AppHeader';
-import { useAppContext } from '../../services/store';
-import { SharedReflection, Prayer } from '../../types';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, typography, spacing, borderRadius } from "../../theme";
+import { Card } from "../../components/Card";
+import { ReactionBar } from "../../components/ReactionBar";
+import { AppHeader } from "../../components/AppHeader";
+import { useAppContext } from "../../services/store";
+import { SharedReflection, Prayer } from "../../types";
 
-type TabType = 'reflections' | 'prayers';
+type TabType = "reflections" | "prayers";
 
 export function CommunityScreen() {
   const { user, sharedReflections, prayers, church } = useAppContext();
-  const [activeTab, setActiveTab] = useState<TabType>('reflections');
+  const [activeTab, setActiveTab] = useState<TabType>("reflections");
 
   const sharedPrayers = prayers.filter((p) => p.isShared && p.isRequest);
 
   const formatTimeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
-    if (hours < 1) return 'Just now';
+    if (hours < 1) return "Just now";
     if (hours < 24) return `${hours}h ago`;
     const days = Math.floor(hours / 24);
-    if (days === 1) return 'Yesterday';
+    if (days === 1) return "Yesterday";
     return `${days}d ago`;
   };
 
@@ -66,9 +72,13 @@ export function CommunityScreen() {
       <Text style={styles.contentText}>{item.content}</Text>
       <View style={styles.prayerFooter}>
         <TouchableOpacity style={styles.prayingButton} activeOpacity={0.7}>
-          <Ionicons name="hand-left-outline" size={16} color={colors.prayerBlue} />
+          <Ionicons
+            name="hand-left-outline"
+            size={16}
+            color={colors.prayerBlue}
+          />
           <Text style={styles.prayingButtonText}>
-            Praying{item.prayingCount > 0 ? ` (${item.prayingCount})` : ''}
+            Praying{item.prayingCount > 0 ? ` (${item.prayingCount})` : ""}
           </Text>
         </TouchableOpacity>
       </View>
@@ -77,46 +87,57 @@ export function CommunityScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader subtitle="Community" streakCount={user?.streakCount || 0} churchName={church?.name} />
+      <AppHeader
+        subtitle="Community"
+        streakCount={user?.streakCount || 0}
+        churchName={church?.name}
+      />
       <View style={styles.tabBar}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'reflections' && styles.activeTab]}
-          onPress={() => setActiveTab('reflections')}
+          style={[styles.tab, activeTab === "reflections" && styles.activeTab]}
+          onPress={() => setActiveTab("reflections")}
           activeOpacity={0.7}
         >
           <Ionicons
             name="chatbubbles-outline"
             size={18}
-            color={activeTab === 'reflections' ? colors.primary : colors.textTertiary}
+            color={
+              activeTab === "reflections" ? colors.primary : colors.textTertiary
+            }
           />
           <Text
-            style={[styles.tabText, activeTab === 'reflections' && styles.activeTabText]}
+            style={[
+              styles.tabText,
+              activeTab === "reflections" && styles.activeTabText,
+            ]}
           >
             Reflections
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'prayers' && styles.activeTab]}
-          onPress={() => setActiveTab('prayers')}
+          style={[styles.tab, activeTab === "prayers" && styles.activeTab]}
+          onPress={() => setActiveTab("prayers")}
           activeOpacity={0.7}
         >
           <Ionicons
             name="hand-left-outline"
             size={18}
-            color={activeTab === 'prayers' ? colors.prayerBlue : colors.textTertiary}
+            color={
+              activeTab === "prayers" ? colors.prayerBlue : colors.textTertiary
+            }
           />
           <Text
             style={[
               styles.tabText,
-              activeTab === 'prayers' && styles.activeTabText,
-              activeTab === 'prayers' && { color: colors.prayerBlue },
+              activeTab === "prayers" && styles.activeTabText,
+              activeTab === "prayers" && { color: colors.prayerBlue },
             ]}
           >
             Prayer Wall
           </Text>
         </TouchableOpacity>
       </View>
-      {activeTab === 'reflections' ? (
+      {activeTab === "reflections" ? (
         <FlatList
           data={sharedReflections}
           renderItem={renderReflection}
@@ -126,10 +147,15 @@ export function CommunityScreen() {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="chatbubbles-outline" size={48} color={colors.borderLight} />
+              <Ionicons
+                name="chatbubbles-outline"
+                size={48}
+                color={colors.borderLight}
+              />
               <Text style={styles.emptyTitle}>No Shared Reflections Yet</Text>
               <Text style={styles.emptyMessage}>
-                When members share their devotional reflections, they'll appear here.
+                When members share their devotional reflections, they'll appear
+                here.
               </Text>
             </View>
           }
@@ -144,10 +170,15 @@ export function CommunityScreen() {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="hand-left-outline" size={48} color={colors.borderLight} />
+              <Ionicons
+                name="hand-left-outline"
+                size={48}
+                color={colors.borderLight}
+              />
               <Text style={styles.emptyTitle}>No Prayer Requests Yet</Text>
               <Text style={styles.emptyMessage}>
-                When members share prayer requests, they'll appear here so you can lift them up in prayer.
+                When members share prayer requests, they'll appear here so you
+                can lift them up in prayer.
               </Text>
             </View>
           }
@@ -163,16 +194,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   tabBar: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
+    marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
   tab: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: spacing.xs,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
@@ -201,8 +233,8 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: spacing.md,
   },
   avatar: {
@@ -210,8 +242,8 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   prayerAvatar: {
     backgroundColor: colors.prayerBlue,
@@ -235,20 +267,20 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
   },
   scriptureRefBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     backgroundColor: colors.surfaceSecondary,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.sm,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     marginBottom: spacing.sm,
   },
   scriptureRefText: {
     ...typography.caption,
     color: colors.primary,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   contentText: {
     ...typography.body,
@@ -259,24 +291,24 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   prayingButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: '#F0F4F8',
+    backgroundColor: "#F0F4F8",
     borderRadius: borderRadius.full,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   prayingButtonText: {
     ...typography.captionBold,
     color: colors.prayerBlue,
   },
   answeredBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: "#E8F5E9",
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: borderRadius.full,
@@ -284,11 +316,11 @@ const styles = StyleSheet.create({
   answeredText: {
     ...typography.small,
     color: colors.success,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: spacing.xxl,
   },
   emptyTitle: {
@@ -299,7 +331,7 @@ const styles = StyleSheet.create({
   emptyMessage: {
     ...typography.body,
     color: colors.textTertiary,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: spacing.sm,
     lineHeight: 22,
   },

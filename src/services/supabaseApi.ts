@@ -135,31 +135,6 @@ export async function signUp(email: string, password: string, name: string) {
     options: { data: { name } },
   });
   if (error) throw error;
-
-  // If email confirmation is enabled, signUp won't return a session.
-  // Sign in immediately to get a session so we can create the profile.
-  if (data.user && !data.session) {
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (signInError) {
-      console.warn('Auto sign-in after signup failed:', signInError.message);
-    }
-  }
-
-  // Create profile from app code (avoids reliance on database trigger)
-  if (data.user) {
-    const { error: profileError } = await supabase.from('profiles').upsert({
-      id: data.user.id,
-      name: name,
-      email: email,
-    });
-    if (profileError) {
-      console.warn('Profile creation error:', profileError.message);
-    }
-  }
-
   return data;
 }
 
@@ -192,6 +167,28 @@ export function onAuthStateChange(callback: (session: any) => void) {
 // ============================================
 // PROFILE
 // ============================================
+
+/**
+ * Ensures a profile row exists for the given auth user.
+ * Creates one from auth metadata if missing (e.g. first sign-in after email confirmation).
+ */
+export async function ensureProfile(authUser: { id: string; email?: string; user_metadata?: any }): Promise<User | null> {
+  const existing = await getProfile(authUser.id);
+  if (existing) return existing;
+
+  const name = authUser.user_metadata?.name || authUser.email || 'User';
+  const email = authUser.email || '';
+  const { error } = await supabase.from('profiles').upsert({
+    id: authUser.id,
+    name,
+    email,
+  });
+  if (error) {
+    console.warn('Profile creation error:', error.message);
+    return null;
+  }
+  return getProfile(authUser.id);
+}
 
 export async function getProfile(userId: string): Promise<User | null> {
   const { data, error } = await supabase

@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../theme';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, typography, spacing } from "../theme";
 
 interface AppHeaderProps {
   subtitle: string;
@@ -10,7 +10,11 @@ interface AppHeaderProps {
   churchName?: string;
 }
 
-export function AppHeader({ subtitle, streakCount, churchName = 'Grace Community Church' }: AppHeaderProps) {
+export function AppHeader({
+  subtitle,
+  streakCount,
+  churchName = "Grace Community Church",
+}: AppHeaderProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -39,9 +43,10 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   content: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    paddingTop: spacing.xs,
     paddingHorizontal: spacing.lg,
   },
   left: {
@@ -56,16 +61,16 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 26,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.white,
     marginBottom: 1,
   },
   subtitle: {
     ...typography.caption,
-    color: 'rgba(255,255,255,0.6)',
+    color: "rgba(255,255,255,0.6)",
   },
   streakContainer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   streakCircle: {
     width: 40,
@@ -73,18 +78,18 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 2,
     borderColor: colors.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 2,
   },
   streakCount: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.secondary,
   },
   streakLabel: {
     fontSize: 9,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.secondary,
     letterSpacing: 0.5,
   },

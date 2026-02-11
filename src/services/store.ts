@@ -118,8 +118,8 @@ export function useAppState() {
         const session = await api.getSession();
 
         if (session?.user) {
-          // We have a Supabase session — load profile
-          const profile = await api.getProfile(session.user.id);
+          // We have a Supabase session — load or create profile
+          const profile = await api.ensureProfile(session.user);
           if (profile) {
             // Try loading data from Supabase
             const supaData = await loadSupabaseData(profile.id, profile.churchId);
@@ -207,7 +207,8 @@ export function useAppState() {
       const { session, user: authUser } = await api.signIn(email, password);
       if (!authUser) return 'Sign in failed';
 
-      const profile = await api.getProfile(authUser.id);
+      // Create profile on first sign-in (e.g. after email confirmation)
+      const profile = await api.ensureProfile(authUser);
       if (!profile) return 'Profile not found';
 
       const church = profile.churchId ? await api.getChurch(profile.churchId) : null;
@@ -241,8 +242,13 @@ export function useAppState() {
       const { session, user: authUser } = await api.signUp(email, password, name);
       if (!authUser) return 'Sign up failed';
 
-      // Profile is created by signUp() in supabaseApi.ts
-      const profile = await api.getProfile(authUser.id);
+      // No session means email confirmation is required
+      if (!session) {
+        return 'CONFIRM_EMAIL';
+      }
+
+      // Session available — create profile and log in
+      const profile = await api.ensureProfile(authUser);
       if (!profile) return 'Profile creation failed';
 
       setState((prev) => ({
