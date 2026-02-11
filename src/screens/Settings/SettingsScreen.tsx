@@ -1,28 +1,15 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
-  Alert,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-  shadows,
-} from "../../theme";
-import { Card } from "../../components/Card";
-import { Button } from "../../components/Button";
-import { AppHeader } from "../../components/AppHeader";
-import { useAppContext } from "../../services/store";
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Share } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
+import { Card } from '../../components/Card';
+import { Button } from '../../components/Button';
+import { AppHeader } from '../../components/AppHeader';
+import { useAppContext } from '../../services/store';
+
 
 export function SettingsScreen() {
-  const { user, church, logout } = useAppContext();
+  const { user, church, logout, leaveChurch } = useAppContext();
   const [dailyNotifications, setDailyNotifications] = useState(true);
   const [communityNotifications, setCommunityNotifications] = useState(true);
   const [streakReminders, setStreakReminders] = useState(true);
@@ -32,6 +19,28 @@ export function SettingsScreen() {
       { text: "Cancel", style: "cancel" },
       { text: "Sign Out", style: "destructive", onPress: logout },
     ]);
+  };
+
+  const handleShareInvite = async () => {
+    if (!church?.inviteCode) return;
+    try {
+      await Share.share({
+        message: `Join ${church.name} on Life Devo! Use invite code: ${church.inviteCode}`,
+      });
+    } catch (e) {
+      // user cancelled
+    }
+  };
+
+  const handleLeaveChurch = () => {
+    Alert.alert(
+      'Leave Church',
+      `Are you sure you want to leave ${church?.name}? You can rejoin with the invite code later.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Leave', style: 'destructive', onPress: leaveChurch },
+      ]
+    );
   };
 
   return (
@@ -80,7 +89,7 @@ export function SettingsScreen() {
             </View>
           </View>
           <View style={styles.divider} />
-          <View style={styles.settingRow}>
+          <TouchableOpacity style={styles.settingRow} activeOpacity={0.7} onPress={handleShareInvite}>
             <View style={styles.settingLeft}>
               <Ionicons name="key-outline" size={20} color={colors.primary} />
               <View>
@@ -90,14 +99,15 @@ export function SettingsScreen() {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity activeOpacity={0.7}>
-              <Ionicons
-                name="copy-outline"
-                size={20}
-                color={colors.textTertiary}
-              />
-            </TouchableOpacity>
-          </View>
+            <Ionicons name="share-outline" size={20} color={colors.textTertiary} />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.settingRow} activeOpacity={0.7} onPress={handleLeaveChurch}>
+            <View style={styles.settingLeft}>
+              <Ionicons name="log-out-outline" size={20} color={colors.error} />
+              <Text style={[styles.settingLabel, { color: colors.error }]}>Leave Church</Text>
+            </View>
+          </TouchableOpacity>
         </Card>
 
         {/* Notifications Section */}

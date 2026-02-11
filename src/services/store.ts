@@ -51,6 +51,9 @@ export interface AppActions {
   isDevotionalCompleted: (devotionalId: string) => boolean;
   togglePrayerAnswered: (prayerId: string, answerNote?: string) => void;
   getUserPrayers: () => Prayer[];
+  createChurch: (name: string) => Promise<string | null>;
+  joinChurch: (inviteCode: string) => Promise<string | null>;
+  leaveChurch: () => void;
 }
 
 export type AppContextType = AppState & AppActions;
@@ -456,6 +459,97 @@ export function useAppState() {
     [state.prayers, state.user]
   );
 
+  const createChurch = useCallback(async (name: string): Promise<string | null> => {
+    try {
+      const userId = state.user?.id;
+      if (!userId) return 'Not signed in';
+
+      // Try Supabase first
+      let church;
+      try {
+        church = await api.createChurch(name, userId);
+        // Update profile to pastor role
+        await api.updateProfile(userId, {
+          church_id: church.id,
+          church_name: church.name,
+          role: 'pastor',
+        });
+      } catch (e) {
+        // Supabase unavailable — create locally for demo mode
+        const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        church = {
+          id: `church-${Date.now()}`,
+          name,
+          inviteCode,
+          createdBy: userId,
+          memberCount: 1,
+          createdAt: new Date().toISOString(),
+        };
+      }
+
+      setState((prev) => ({
+        ...prev,
+        church,
+        user: prev.user ? { ...prev.user, churchId: church.id, churchName: church.name, role: 'pastor' as const } : null,
+      }));
+      persistChurch(church);
+      if (state.user) {
+        persistUser({ ...state.user, churchId: church.id, churchName: church.name, role: 'pastor' });
+      }
+
+      return null;
+    } catch (e: any) {
+      return e.message || 'Failed to create church';
+    }
+  }, [state.user]);
+
+  const joinChurch = useCallback(async (inviteCode: string): Promise<string | null> => {
+    try {
+      const userId = state.user?.id;
+      if (!userId) return 'Not signed in';
+
+      let church;
+      try {
+        church = await api.joinChurchByCode(inviteCode, userId);
+      } catch (e: any) {
+        return e.message || 'Church not found with that invite code';
+      }
+
+      setState((prev) => ({
+        ...prev,
+        church,
+        user: prev.user ? { ...prev.user, churchId: church.id, churchName: church.name } : null,
+      }));
+      persistChurch(church);
+      if (state.user) {
+        persistUser({ ...state.user, churchId: church.id, churchName: church.name });
+      }
+
+      return null;
+    } catch (e: any) {
+      return e.message || 'Failed to join church';
+    }
+  }, [state.user]);
+
+  const leaveChurch = useCallback(() => {
+    if (state.user) {
+      api.updateProfile(state.user.id, {
+        church_id: '',
+        church_name: '',
+      }).catch((e) => console.log('Supabase leave church skipped:', e));
+    }
+
+    setState((prev) => ({
+      ...prev,
+      church: null,
+      user: prev.user ? { ...prev.user, churchId: '', churchName: '' } : null,
+    }));
+    persistChurch(null);
+    if (state.user) {
+      persistUser({ ...state.user, churchId: '', churchName: '' });
+    }
+  }, [state.user]);
+
   return {
     ...state,
     login,
@@ -472,5 +566,8 @@ export function useAppState() {
     isDevotionalCompleted,
     togglePrayerAnswered,
     getUserPrayers,
+    createChurch,
+    joinChurch,
+    leaveChurch,
   };
 }

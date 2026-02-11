@@ -11,6 +11,9 @@ import { WelcomeScreen } from "../screens/Auth/WelcomeScreen";
 import { SignInScreen } from "../screens/Auth/SignInScreen";
 import { SignUpScreen } from "../screens/Auth/SignUpScreen";
 
+// Church Setup
+import { ChurchSetupScreen } from '../screens/Church/ChurchSetupScreen';
+
 // Main Screens
 import { TodayScreen } from "../screens/Today/TodayScreen";
 import { ArchiveScreen } from "../screens/Archive/ArchiveScreen";
@@ -114,15 +117,19 @@ function AuthNavigator() {
 }
 
 export function AppNavigator() {
-  const { isAuthenticated } = useAppContext();
+  const { isAuthenticated, church } = useAppContext();
+
+  const hasChurch = Boolean(church?.id);
 
   return (
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated ? (
-          <RootStack.Screen name="Main" component={MainTabNavigator} />
-        ) : (
+        {!isAuthenticated ? (
           <RootStack.Screen name="Auth" component={AuthNavigator} />
+        ) : !hasChurch ? (
+          <RootStack.Screen name="ChurchSetup" component={ChurchSetupScreen} />
+        ) : (
+          <RootStack.Screen name="Main" component={MainTabNavigator} />
         )}
       </RootStack.Navigator>
     </NavigationContainer>
