@@ -19,6 +19,8 @@ import { ManageDevotionalsScreen } from "../screens/Pastor/ManageDevotionalsScre
 import { CreateDevotionalScreen } from "../screens/Pastor/CreateDevotionalScreen";
 import { BatchSetupScreen } from "../screens/Pastor/BatchSetupScreen";
 import { BatchListScreen } from "../screens/Pastor/BatchListScreen";
+import { PasteCSVScreen } from "../screens/Pastor/PasteCSVScreen";
+import { ImportReviewScreen } from "../screens/Pastor/ImportReviewScreen";
 
 // Main Screens
 import { TodayScreen } from "../screens/Today/TodayScreen";
@@ -121,6 +123,8 @@ function MainNavigator() {
       <MainStack.Screen name="CreateDevotional" component={CreateDevotionalScreen} />
       <MainStack.Screen name="BatchSetup" component={BatchSetupScreen} />
       <MainStack.Screen name="BatchList" component={BatchListScreen} />
+      <MainStack.Screen name="PasteCSV" component={PasteCSVScreen} />
+      <MainStack.Screen name="ImportReview" component={ImportReviewScreen} />
     </MainStack.Navigator>
   );
 }

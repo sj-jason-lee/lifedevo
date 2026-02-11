@@ -7,12 +7,18 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { AppHeader } from '../../components/AppHeader';
 import { Button } from '../../components/Button';
+import { Card } from '../../components/Card';
 import { useAppContext } from '../../services/store';
+import { parseCSV, generateTemplateCSV } from '../../services/csvParser';
 
 const PRESETS = [
   { label: '1 Week', days: 7 },
@@ -22,6 +28,8 @@ const PRESETS = [
   { label: '6 Months', days: 180 },
   { label: 'Custom', days: 0 },
 ];
+
+type Method = 'manual' | 'csv' | 'paste';
 
 function formatDate(d: Date): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -35,25 +43,24 @@ function addDays(date: Date, n: number): Date {
 
 export function BatchSetupScreen({ navigation }: any) {
   const { user } = useAppContext();
+  const [method, setMethod] = useState<Method | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
   const [customDays, setCustomDays] = useState('');
 
   const startDate = new Date();
-  startDate.setDate(startDate.getDate() + 1); // Start from tomorrow
+  startDate.setDate(startDate.getDate() + 1);
 
   const getDayCount = (): number => {
     if (selectedPreset === null) return 0;
     const preset = PRESETS[selectedPreset];
-    if (preset.days === 0) {
-      return parseInt(customDays, 10) || 0;
-    }
+    if (preset.days === 0) return parseInt(customDays, 10) || 0;
     return preset.days;
   };
 
   const dayCount = getDayCount();
   const endDate = dayCount > 0 ? addDays(startDate, dayCount - 1) : null;
 
-  const handleContinue = () => {
+  const handleManualContinue = () => {
     if (dayCount <= 0) {
       Alert.alert('Select Duration', 'Please choose how many days to create devotionals for.');
       return;
@@ -62,27 +69,202 @@ export function BatchSetupScreen({ navigation }: any) {
       Alert.alert('Too Many Days', 'Please select 365 days or fewer.');
       return;
     }
-
-    // Generate array of date strings
     const dates: string[] = [];
     for (let i = 0; i < dayCount; i++) {
       const d = addDays(startDate, i);
       dates.push(d.toISOString().split('T')[0]);
     }
-
     navigation.navigate('BatchList', { dates });
   };
 
+  const handlePickCSV = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['text/csv', 'text/comma-separated-values', 'text/*', 'application/octet-stream'],
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const file = result.assets[0];
+      const content = await FileSystem.readAsStringAsync(file.uri);
+      const parsed = parseCSV(content);
+
+      if (parsed.length === 0) {
+        Alert.alert('No Data', 'Could not find any devotional rows in the file.');
+        return;
+      }
+
+      navigation.navigate('ImportReview', { results: parsed });
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to read file');
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const csv = generateTemplateCSV();
+      const fileUri = FileSystem.documentDirectory + 'devotional_template.csv';
+      await FileSystem.writeAsStringAsync(fileUri, csv);
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/csv',
+          dialogTitle: 'Save Template CSV',
+        });
+      } else {
+        Alert.alert('Saved', `Template saved to ${fileUri}`);
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to create template');
+    }
+  };
+
+  // Method selection screen
+  if (!method) {
+    return (
+      <View style={styles.container}>
+        <AppHeader subtitle="Batch Create" streakCount={user?.streakCount || 0} />
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <Text style={styles.heading}>How do you want to create?</Text>
+          <Text style={styles.subheading}>
+            Choose a method to create multiple devotionals at once.
+          </Text>
+
+          <TouchableOpacity
+            style={styles.methodCard}
+            onPress={() => setMethod('manual')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.methodIcon}>
+              <Ionicons name="create-outline" size={28} color={colors.primary} />
+            </View>
+            <View style={styles.methodInfo}>
+              <Text style={styles.methodTitle}>Write Manually</Text>
+              <Text style={styles.methodDesc}>
+                Pick a date range and fill in each day one by one
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.methodCard}
+            onPress={() => setMethod('csv')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.methodIcon}>
+              <Ionicons name="document-outline" size={28} color={colors.primary} />
+            </View>
+            <View style={styles.methodInfo}>
+              <Text style={styles.methodTitle}>Import from CSV</Text>
+              <Text style={styles.methodDesc}>
+                Upload a spreadsheet file with all your devotionals
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.methodCard}
+            onPress={() => setMethod('paste')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.methodIcon}>
+              <Ionicons name="clipboard-outline" size={28} color={colors.primary} />
+            </View>
+            <View style={styles.methodInfo}>
+              <Text style={styles.methodTitle}>Paste from Spreadsheet</Text>
+              <Text style={styles.methodDesc}>
+                Copy & paste CSV text directly from a spreadsheet
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+
+          <View style={{ height: spacing.xxl }} />
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // CSV file import
+  if (method === 'csv') {
+    return (
+      <View style={styles.container}>
+        <AppHeader subtitle="Import CSV" streakCount={user?.streakCount || 0} />
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <Text style={styles.heading}>Import from CSV</Text>
+
+          <Card style={styles.formatCard}>
+            <Text style={styles.formatTitle}>CSV FORMAT</Text>
+            <Text style={styles.formatCode}>
+              date, scripture_ref, scripture_text,{'\n'}reflection, prayer_prompt, questions
+            </Text>
+            <Text style={styles.formatHint}>
+              Separate questions with the | character
+            </Text>
+          </Card>
+
+          <TouchableOpacity
+            style={styles.downloadTemplate}
+            onPress={handleDownloadTemplate}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="download-outline" size={18} color={colors.secondary} />
+            <Text style={styles.downloadText}>Download Template CSV</Text>
+          </TouchableOpacity>
+
+          {/* File picker area */}
+          <TouchableOpacity
+            style={styles.dropZone}
+            onPress={handlePickCSV}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="folder-open-outline" size={40} color={colors.textMuted} />
+            <Text style={styles.dropZoneTitle}>Pick CSV File</Text>
+            <Text style={styles.dropZoneHint}>Tap to browse your files</Text>
+          </TouchableOpacity>
+
+          <View style={styles.buttonRow}>
+            <Button
+              title="Back"
+              onPress={() => setMethod(null)}
+              variant="outline"
+              style={styles.halfButton}
+            />
+          </View>
+
+          <View style={{ height: spacing.xxl }} />
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // Paste CSV — navigate to dedicated screen via effect
+  React.useEffect(() => {
+    if (method === 'paste') {
+      setMethod(null);
+      navigation.navigate('PasteCSV');
+    }
+  }, [method, navigation]);
+
+  // Manual mode — duration picker
   return (
     <View style={styles.container}>
-      <AppHeader subtitle="Batch Create" streakCount={user?.streakCount || 0} />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <AppHeader subtitle="Write Manually" streakCount={user?.streakCount || 0} />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.heading}>How many days?</Text>
         <Text style={styles.subheading}>
-          Create devotionals for multiple days at once. You can fill them in any order.
+          Pick a date range and fill in each day one by one.
         </Text>
 
         <View style={styles.presetsGrid}>
@@ -129,7 +311,6 @@ export function BatchSetupScreen({ navigation }: any) {
           </View>
         )}
 
-        {/* Date range preview */}
         <View style={styles.rangeCard}>
           <View style={styles.rangeRow}>
             <View style={styles.rangeItem}>
@@ -151,21 +332,20 @@ export function BatchSetupScreen({ navigation }: any) {
           )}
         </View>
 
-        <Button
-          title="Continue"
-          onPress={handleContinue}
-          size="lg"
-          disabled={dayCount <= 0}
-          style={styles.continueButton}
-        />
-
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonRow}>
+          <Button
+            title="Back"
+            onPress={() => setMethod(null)}
+            variant="outline"
+            style={styles.halfButton}
+          />
+          <Button
+            title="Continue"
+            onPress={handleManualContinue}
+            disabled={dayCount <= 0}
+            style={styles.continueButton}
+          />
+        </View>
 
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
@@ -191,6 +371,94 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
+  // Method selection
+  methodCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    ...shadows.sm,
+  },
+  methodIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  methodInfo: {
+    flex: 1,
+    marginLeft: spacing.md,
+  },
+  methodTitle: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  methodDesc: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  // CSV format
+  formatCard: {
+    backgroundColor: colors.surfaceSecondary,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+  },
+  formatTitle: {
+    ...typography.sectionLabel,
+    color: colors.textTertiary,
+    letterSpacing: 1,
+    marginBottom: spacing.xs,
+  },
+  formatCode: {
+    ...typography.caption,
+    color: colors.text,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 11,
+  },
+  formatHint: {
+    ...typography.small,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+    fontStyle: 'italic',
+  },
+  downloadTemplate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  downloadText: {
+    ...typography.captionBold,
+    color: colors.secondary,
+  },
+  dropZone: {
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    borderRadius: borderRadius.lg,
+    padding: spacing.xxl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  dropZoneTitle: {
+    ...typography.bodyBold,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+  },
+  dropZoneHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  // Manual mode
   presetsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -279,7 +547,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     fontWeight: '600',
   },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  halfButton: {
+    flex: 1,
+  },
   continueButton: {
+    flex: 1,
     backgroundColor: colors.primary,
   },
   cancelButton: {
