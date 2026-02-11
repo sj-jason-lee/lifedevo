@@ -277,7 +277,14 @@ export function useAppState() {
     try {
       await api.signOut();
     } catch (e) {
-      // Ignore sign out errors
+      // signOut may fail on network errors — force-clear session below
+    }
+    // Always nuke the Supabase auth token so session can't be restored
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.removeItem('sb-hrcahdzhummrdtuxcjzp-auth-token');
+    } catch (e) {
+      // best-effort
     }
     setState((prev) => ({
       ...prev,
