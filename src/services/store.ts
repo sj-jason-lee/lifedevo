@@ -21,8 +21,6 @@ import {
   persistPrayers,
   persistCompletions,
   clearAllData,
-  saveLocalChurch,
-  findLocalChurchByCode,
 } from './storage';
 import * as api from './supabaseApi';
 
@@ -466,31 +464,14 @@ export function useAppState() {
       const userId = state.user?.id;
       if (!userId) return 'Not signed in';
 
-      // Try Supabase first
-      let church;
-      try {
-        church = await api.createChurch(name, userId);
-        // Update profile to pastor role
-        await api.updateProfile(userId, {
-          church_id: church.id,
-          church_name: church.name,
-          role: 'pastor',
-        });
-      } catch (e) {
-        // Supabase unavailable — create locally for demo mode
-        const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-        church = {
-          id: `church-${Date.now()}`,
-          name,
-          inviteCode,
-          createdBy: userId,
-          memberCount: 1,
-          createdAt: new Date().toISOString(),
-        };
-      }
+      const church = await api.createChurch(name, userId);
 
-      // Always save locally so the code is joinable
-      await saveLocalChurch(church);
+      // Update profile to pastor role
+      await api.updateProfile(userId, {
+        church_id: church.id,
+        church_name: church.name,
+        role: 'pastor',
+      });
 
       setState((prev) => ({
         ...prev,
@@ -513,41 +494,12 @@ export function useAppState() {
       const userId = state.user?.id;
       if (!userId) return 'Not signed in';
 
-      let church;
-
-      // Try Supabase first
-      try {
-        church = await api.joinChurchByCode(inviteCode, userId);
-      } catch (e) {
-        // Supabase failed — check local churches
-        church = null;
-      }
-
-      // Fallback: check locally-created churches
-      if (!church) {
-        const localChurch = await findLocalChurchByCode(inviteCode);
-        if (localChurch) {
-          church = { ...localChurch, memberCount: (localChurch.memberCount || 0) + 1 };
-          await saveLocalChurch(church);
-        }
-      }
-
-      // Fallback: check mock church code
-      if (!church) {
-        const { mockChurch } = require('./mockData');
-        if (mockChurch.inviteCode.toUpperCase() === inviteCode.toUpperCase()) {
-          church = mockChurch;
-        }
-      }
-
-      if (!church) {
-        return 'Church not found with that invite code';
-      }
+      const church = await api.joinChurchByCode(inviteCode, userId);
 
       setState((prev) => ({
         ...prev,
         church,
-        user: prev.user ? { ...prev.user, churchId: church!.id, churchName: church!.name } : null,
+        user: prev.user ? { ...prev.user, churchId: church.id, churchName: church.name } : null,
       }));
       persistChurch(church);
       if (state.user) {
