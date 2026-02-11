@@ -14,6 +14,9 @@ import { SignUpScreen } from "../screens/Auth/SignUpScreen";
 // Church Setup
 import { ChurchSetupScreen } from '../screens/Church/ChurchSetupScreen';
 
+// Pastor Screens
+import { CreateDevotionalScreen } from "../screens/Pastor/CreateDevotionalScreen";
+
 // Main Screens
 import { TodayScreen } from "../screens/Today/TodayScreen";
 import { ArchiveScreen } from "../screens/Archive/ArchiveScreen";
@@ -24,6 +27,7 @@ import { SettingsScreen } from "../screens/Settings/SettingsScreen";
 
 const AuthStack = createNativeStackNavigator();
 const MainTab = createBottomTabNavigator();
+const MainStack = createNativeStackNavigator();
 const ArchiveStack = createNativeStackNavigator();
 const RootStack = createNativeStackNavigator();
 
@@ -106,6 +110,23 @@ function MainTabNavigator() {
   );
 }
 
+function MainNavigator() {
+  return (
+    <MainStack.Navigator>
+      <MainStack.Screen
+        name="Tabs"
+        component={MainTabNavigator}
+        options={{ headerShown: false }}
+      />
+      <MainStack.Screen
+        name="CreateDevotional"
+        component={CreateDevotionalScreen}
+        options={{ headerShown: false, presentation: 'modal' }}
+      />
+    </MainStack.Navigator>
+  );
+}
+
 function AuthNavigator() {
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
@@ -129,7 +150,7 @@ export function AppNavigator() {
         ) : !hasChurch ? (
           <RootStack.Screen name="ChurchSetup" component={ChurchSetupScreen} />
         ) : (
-          <RootStack.Screen name="Main" component={MainTabNavigator} />
+          <RootStack.Screen name="Main" component={MainNavigator} />
         )}
       </RootStack.Navigator>
     </NavigationContainer>

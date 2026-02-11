@@ -16,7 +16,7 @@ import { AppHeader } from '../../components/AppHeader';
 import { Button } from '../../components/Button';
 import { useAppContext } from '../../services/store';
 
-export function TodayScreen() {
+export function TodayScreen({ navigation }: any) {
   const {
     user,
     getTodayDevotional,
@@ -34,6 +34,7 @@ export function TodayScreen() {
   const [showJournal, setShowJournal] = useState(false);
   const [showPrayer, setShowPrayer] = useState(false);
 
+  const isPastor = user?.role === 'pastor' || user?.role === 'admin';
   const isCompleted = devotional ? isDevotionalCompleted(devotional.id) : false;
 
   const formatDate = (dateStr: string) => {
@@ -90,8 +91,19 @@ export function TodayScreen() {
           <Ionicons name="sunny-outline" size={56} color={colors.secondary} />
           <Text style={styles.emptyTitle}>No Devotional Yet</Text>
           <Text style={styles.emptyMessage}>
-            Your pastor hasn't published today's devotional yet.{'\n'}Check back soon!
+            {isPastor
+              ? "You haven't published today's devotional yet."
+              : "Your pastor hasn't published today's devotional yet.\nCheck back soon!"}
           </Text>
+          {isPastor && (
+            <Button
+              title="Write Today's Devotional"
+              onPress={() => navigation.navigate('CreateDevotional')}
+              size="lg"
+              style={styles.writeButton}
+              icon={<Ionicons name="create-outline" size={20} color={colors.white} />}
+            />
+          )}
         </View>
       </View>
     );
@@ -258,6 +270,16 @@ export function TodayScreen() {
           <View style={{ height: spacing.xxl }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {isPastor && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => navigation.navigate('CreateDevotional')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={28} color={colors.white} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -439,5 +461,25 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginTop: spacing.sm,
+  },
+  writeButton: {
+    marginTop: spacing.lg,
+    backgroundColor: colors.primary,
+  },
+  fab: {
+    position: 'absolute',
+    right: spacing.lg,
+    bottom: spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
 });

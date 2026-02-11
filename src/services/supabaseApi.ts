@@ -297,6 +297,44 @@ export async function getDevotionals(churchId: string): Promise<Devotional[]> {
   return devRows.map((d: any) => mapDevotional(d, questionsByDev.get(d.id) || []));
 }
 
+export async function createDevotional(devotional: {
+  church_id: string;
+  author_id: string;
+  author_name: string;
+  scripture_ref: string;
+  scripture_text: string;
+  reflection: string;
+  prayer_prompt: string;
+  status: string;
+}, questionTexts: string[]): Promise<Devotional> {
+  const { data, error } = await supabase
+    .from('devotionals')
+    .insert({
+      ...devotional,
+      published_at: devotional.status === 'published' ? new Date().toISOString() : null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+
+  const questions: Question[] = [];
+  if (questionTexts.length > 0) {
+    const qRows = questionTexts.map((text, i) => ({
+      devotional_id: data.id,
+      text,
+      order: i,
+    }));
+    const { data: qData, error: qError } = await supabase
+      .from('questions')
+      .insert(qRows)
+      .select();
+    if (qError) throw qError;
+    (qData || []).forEach((q: any) => questions.push(mapQuestion(q)));
+  }
+
+  return mapDevotional(data, questions);
+}
+
 // ============================================
 // JOURNAL ENTRIES
 // ============================================
