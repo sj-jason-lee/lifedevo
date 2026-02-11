@@ -51,6 +51,13 @@ export interface AppActions {
   isDevotionalCompleted: (devotionalId: string) => boolean;
   togglePrayerAnswered: (prayerId: string, answerNote?: string) => void;
   getUserPrayers: () => Prayer[];
+  publishDevotional: (data: {
+    scriptureRef: string;
+    scriptureText: string;
+    reflection: string;
+    prayerPrompt: string;
+    questions: string[];
+  }) => Promise<string | null>;
   createChurch: (name: string) => Promise<string | null>;
   joinChurch: (inviteCode: string) => Promise<string | null>;
   leaveChurch: () => void;
@@ -461,6 +468,40 @@ export function useAppState() {
     [state.prayers, state.user]
   );
 
+  const publishDevotional = useCallback(async (data: {
+    scriptureRef: string;
+    scriptureText: string;
+    reflection: string;
+    prayerPrompt: string;
+    questions: string[];
+  }): Promise<string | null> => {
+    try {
+      const userId = state.user?.id;
+      const churchId = state.church?.id;
+      if (!userId || !churchId) return 'Not signed in or no church';
+
+      const devotional = await api.createDevotional({
+        church_id: churchId,
+        author_id: userId,
+        author_name: state.user!.name,
+        scripture_ref: data.scriptureRef,
+        scripture_text: data.scriptureText,
+        reflection: data.reflection,
+        prayer_prompt: data.prayerPrompt,
+        status: 'published',
+      }, data.questions);
+
+      setState((prev) => ({
+        ...prev,
+        devotionals: [devotional, ...prev.devotionals],
+      }));
+
+      return null;
+    } catch (e: any) {
+      return e.message || 'Failed to publish devotional';
+    }
+  }, [state.user, state.church]);
+
   const createChurch = useCallback(async (name: string): Promise<string | null> => {
     try {
       const userId = state.user?.id;
@@ -549,6 +590,7 @@ export function useAppState() {
     isDevotionalCompleted,
     togglePrayerAnswered,
     getUserPrayers,
+    publishDevotional,
     createChurch,
     joinChurch,
     leaveChurch,
