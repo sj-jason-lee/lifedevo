@@ -273,29 +273,24 @@ export function useAppState() {
     }
   }, []);
 
-  const logout = useCallback(async () => {
-    try {
-      await api.signOut();
-    } catch (e) {
-      // signOut may fail on network errors — force-clear session below
-    }
-    // Always nuke the Supabase auth token so session can't be restored
-    try {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      await AsyncStorage.removeItem('sb-hrcahdzhummrdtuxcjzp-auth-token');
-    } catch (e) {
-      // best-effort
-    }
+  const logout = useCallback(() => {
+    // Fire-and-forget — don't block on network
+    api.signOut().catch(() => {});
+
+    // Immediately nuke the Supabase auth token so session can't be restored
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    AsyncStorage.removeItem('sb-hrcahdzhummrdtuxcjzp-auth-token').catch(() => {});
+
+    // Clear auth state but keep user data (journals, prayers, completions)
     setState((prev) => ({
       ...prev,
       user: null,
       church: null,
       isAuthenticated: false,
-      journalEntries: [],
-      prayers: [],
-      completions: [],
     }));
-    clearAllData();
+    persistAuth(false);
+    persistUser(null);
+    persistChurch(null);
   }, []);
 
   const getTodayDevotional = useCallback(() => {
