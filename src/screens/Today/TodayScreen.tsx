@@ -98,7 +98,7 @@ export function TodayScreen({ navigation }: any) {
           {isPastor && (
             <Button
               title="Write Today's Devotional"
-              onPress={() => navigation.navigate('CreateDevotional')}
+              onPress={() => navigation.getParent()?.navigate('CreateDevotional')}
               size="lg"
               style={styles.writeButton}
               icon={<Ionicons name="create-outline" size={20} color={colors.white} />}
@@ -274,7 +274,7 @@ export function TodayScreen({ navigation }: any) {
       {isPastor && (
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => navigation.navigate('CreateDevotional')}
+          onPress={() => navigation.getParent()?.navigate('CreateDevotional')}
           activeOpacity={0.8}
         >
           <Ionicons name="add" size={28} color={colors.white} />
