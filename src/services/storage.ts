@@ -14,6 +14,7 @@ const KEYS = {
   JOURNAL_ENTRIES: '@lifedevo/journalEntries',
   PRAYERS: '@lifedevo/prayers',
   COMPLETIONS: '@lifedevo/completions',
+  LOCAL_CHURCHES: '@lifedevo/localChurches',
 } as const;
 
 export interface PersistedState {
@@ -87,6 +88,18 @@ export async function persistPrayers(prayers: Prayer[]): Promise<void> {
 
 export async function persistCompletions(completions: DevotionalCompletion[]): Promise<void> {
   await setJSON(KEYS.COMPLETIONS, completions);
+}
+
+export async function saveLocalChurch(church: Church): Promise<void> {
+  const existing = await getJSON<Church[]>(KEYS.LOCAL_CHURCHES) || [];
+  const updated = existing.filter((c) => c.id !== church.id);
+  updated.push(church);
+  await setJSON(KEYS.LOCAL_CHURCHES, updated);
+}
+
+export async function findLocalChurchByCode(inviteCode: string): Promise<Church | null> {
+  const churches = await getJSON<Church[]>(KEYS.LOCAL_CHURCHES) || [];
+  return churches.find((c) => c.inviteCode.toUpperCase() === inviteCode.toUpperCase()) || null;
 }
 
 export async function clearAllData(): Promise<void> {

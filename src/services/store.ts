@@ -21,6 +21,8 @@ import {
   persistPrayers,
   persistCompletions,
   clearAllData,
+  saveLocalChurch,
+  findLocalChurchByCode,
 } from './storage';
 import * as api from './supabaseApi';
 
@@ -487,6 +489,9 @@ export function useAppState() {
         };
       }
 
+      // Always save locally so the code is joinable
+      await saveLocalChurch(church);
+
       setState((prev) => ({
         ...prev,
         church,
@@ -509,16 +514,40 @@ export function useAppState() {
       if (!userId) return 'Not signed in';
 
       let church;
+
+      // Try Supabase first
       try {
         church = await api.joinChurchByCode(inviteCode, userId);
-      } catch (e: any) {
-        return e.message || 'Church not found with that invite code';
+      } catch (e) {
+        // Supabase failed — check local churches
+        church = null;
+      }
+
+      // Fallback: check locally-created churches
+      if (!church) {
+        const localChurch = await findLocalChurchByCode(inviteCode);
+        if (localChurch) {
+          church = { ...localChurch, memberCount: (localChurch.memberCount || 0) + 1 };
+          await saveLocalChurch(church);
+        }
+      }
+
+      // Fallback: check mock church code
+      if (!church) {
+        const { mockChurch } = require('./mockData');
+        if (mockChurch.inviteCode.toUpperCase() === inviteCode.toUpperCase()) {
+          church = mockChurch;
+        }
+      }
+
+      if (!church) {
+        return 'Church not found with that invite code';
       }
 
       setState((prev) => ({
         ...prev,
         church,
-        user: prev.user ? { ...prev.user, churchId: church.id, churchName: church.name } : null,
+        user: prev.user ? { ...prev.user, churchId: church!.id, churchName: church!.name } : null,
       }));
       persistChurch(church);
       if (state.user) {
