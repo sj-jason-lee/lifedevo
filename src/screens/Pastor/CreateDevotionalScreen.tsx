@@ -18,8 +18,9 @@ import { AppHeader } from '../../components/AppHeader';
 import { Button } from '../../components/Button';
 import { useAppContext } from '../../services/store';
 
-export function CreateDevotionalScreen({ navigation }: any) {
+export function CreateDevotionalScreen({ navigation, route }: any) {
   const { user, publishDevotional } = useAppContext();
+  const targetDate: string | undefined = route?.params?.date;
 
   const [scriptureRef, setScriptureRef] = useState('');
   const [scriptureText, setScriptureText] = useState('');
@@ -75,13 +76,17 @@ export function CreateDevotionalScreen({ navigation }: any) {
       reflection: reflection.trim(),
       prayerPrompt: prayerPrompt.trim(),
       questions: validQuestions.map((q) => q.trim()),
+      publishDate: targetDate,
     });
     setIsPublishing(false);
 
     if (error) {
       Alert.alert('Error', error);
     } else {
-      Alert.alert('Published!', "Today's devotional is now live for your church.", [
+      const dateLabel = targetDate
+        ? new Date(targetDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+        : 'today';
+      Alert.alert('Published!', `Devotional for ${dateLabel} is scheduled.`, [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     }
@@ -89,7 +94,12 @@ export function CreateDevotionalScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <AppHeader subtitle="New Devotional" streakCount={user?.streakCount || 0} />
+      <AppHeader
+        subtitle={targetDate
+          ? new Date(targetDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+          : 'New Devotional'}
+        streakCount={user?.streakCount || 0}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
