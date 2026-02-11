@@ -36,11 +36,17 @@ export function SignUpScreen({ navigation }: any) {
     }
 
     setLoading(true);
-    const error = await signUpWithEmail(email.trim(), password, name.trim());
+    const result = await signUpWithEmail(email.trim(), password, name.trim());
     setLoading(false);
 
-    if (error) {
-      Alert.alert('Sign Up Failed', error);
+    if (result === 'CONFIRM_EMAIL') {
+      Alert.alert(
+        'Check Your Email',
+        'We sent a confirmation link to your email. Please confirm your email and then sign in.',
+        [{ text: 'OK', onPress: () => navigation.navigate('SignIn') }],
+      );
+    } else if (result) {
+      Alert.alert('Sign Up Failed', result);
     }
   };
 

@@ -1,26 +1,26 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme';
-import { useAppContext } from '../services/store';
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Ionicons } from "@expo/vector-icons";
+import { colors } from "../theme";
+import { useAppContext } from "../services/store";
 
 // Auth Screens
-import { WelcomeScreen } from '../screens/Auth/WelcomeScreen';
-import { SignInScreen } from '../screens/Auth/SignInScreen';
-import { SignUpScreen } from '../screens/Auth/SignUpScreen';
+import { WelcomeScreen } from "../screens/Auth/WelcomeScreen";
+import { SignInScreen } from "../screens/Auth/SignInScreen";
+import { SignUpScreen } from "../screens/Auth/SignUpScreen";
 
 // Church Setup
 import { ChurchSetupScreen } from '../screens/Church/ChurchSetupScreen';
 
 // Main Screens
-import { TodayScreen } from '../screens/Today/TodayScreen';
-import { ArchiveScreen } from '../screens/Archive/ArchiveScreen';
-import { DevotionalDetailScreen } from '../screens/Archive/DevotionalDetailScreen';
-import { CommunityScreen } from '../screens/Community/CommunityScreen';
-import { MyJourneyScreen } from '../screens/MyJourney/MyJourneyScreen';
-import { SettingsScreen } from '../screens/Settings/SettingsScreen';
+import { TodayScreen } from "../screens/Today/TodayScreen";
+import { ArchiveScreen } from "../screens/Archive/ArchiveScreen";
+import { DevotionalDetailScreen } from "../screens/Archive/DevotionalDetailScreen";
+import { CommunityScreen } from "../screens/Community/CommunityScreen";
+import { MyJourneyScreen } from "../screens/MyJourney/MyJourneyScreen";
+import { SettingsScreen } from "../screens/Settings/SettingsScreen";
 
 const AuthStack = createNativeStackNavigator();
 const MainTab = createBottomTabNavigator();
@@ -39,10 +39,14 @@ function ArchiveNavigator() {
         name="DevotionalDetail"
         component={DevotionalDetailScreen}
         options={{
-          title: 'Devotional',
+          title: "Devotional",
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600', fontSize: 16, color: colors.text },
+          headerTitleStyle: {
+            fontWeight: "600",
+            fontSize: 16,
+            color: colors.text,
+          },
           headerShadowVisible: false,
         }}
       />
@@ -58,23 +62,23 @@ function MainTabNavigator() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
           switch (route.name) {
-            case 'Today':
-              iconName = focused ? 'sunny' : 'sunny-outline';
+            case "Today":
+              iconName = focused ? "sunny" : "sunny-outline";
               break;
-            case 'Archive':
-              iconName = focused ? 'library' : 'library-outline';
+            case "Archive":
+              iconName = focused ? "library" : "library-outline";
               break;
-            case 'Community':
-              iconName = focused ? 'people' : 'people-outline';
+            case "Community":
+              iconName = focused ? "people" : "people-outline";
               break;
-            case 'Journey':
-              iconName = focused ? 'heart' : 'heart-outline';
+            case "Journey":
+              iconName = focused ? "heart" : "heart-outline";
               break;
-            case 'Settings':
-              iconName = focused ? 'settings' : 'settings-outline';
+            case "Settings":
+              iconName = focused ? "settings" : "settings-outline";
               break;
             default:
-              iconName = 'ellipse-outline';
+              iconName = "ellipse-outline";
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -84,11 +88,11 @@ function MainTabNavigator() {
           backgroundColor: colors.surface,
           borderTopColor: colors.borderLight,
           paddingTop: 4,
-          height: 88,
+          height: 78,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '500',
+          fontWeight: "500",
           marginTop: 2,
         },
       })}

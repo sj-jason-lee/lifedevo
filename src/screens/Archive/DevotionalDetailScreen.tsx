@@ -1,15 +1,19 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius } from '../../theme';
-import { Card } from '../../components/Card';
-import { useAppContext } from '../../services/store';
+import React from "react";
+import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, typography, spacing, borderRadius } from "../../theme";
+import { Card } from "../../components/Card";
+import { useAppContext } from "../../services/store";
 
 export function DevotionalDetailScreen({ route, navigation }: any) {
   const { devotionalId } = route.params;
-  const { getDevotionalById, getJournalForDevotional, getPrayerForDevotional, isDevotionalCompleted } =
-    useAppContext();
+  const {
+    getDevotionalById,
+    getJournalForDevotional,
+    getPrayerForDevotional,
+    isDevotionalCompleted,
+  } = useAppContext();
 
   const devotional = getDevotionalById(devotionalId);
   const journals = getJournalForDevotional(devotionalId);
@@ -25,22 +29,31 @@ export function DevotionalDetailScreen({ route, navigation }: any) {
   }
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.dateRow}>
-          <Text style={styles.dateText}>{formatDate(devotional.publishedAt)}</Text>
+          <Text style={styles.dateText}>
+            {formatDate(devotional.publishedAt)}
+          </Text>
           {completed && (
             <View style={styles.completedBadge}>
-              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+              <Ionicons
+                name="checkmark-circle"
+                size={16}
+                color={colors.success}
+              />
               <Text style={styles.completedLabel}>Completed</Text>
             </View>
           )}
@@ -54,7 +67,11 @@ export function DevotionalDetailScreen({ route, navigation }: any) {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={18}
+              color={colors.primary}
+            />
             <Text style={styles.sectionTitle}>Reflection</Text>
           </View>
           <Text style={styles.authorName}>by {devotional.authorName}</Text>
@@ -64,7 +81,11 @@ export function DevotionalDetailScreen({ route, navigation }: any) {
         {devotional.questions.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="help-circle-outline" size={18} color={colors.primary} />
+              <Ionicons
+                name="help-circle-outline"
+                size={18}
+                color={colors.primary}
+              />
               <Text style={styles.sectionTitle}>Questions</Text>
             </View>
             {devotional.questions.map((q) => {
@@ -91,14 +112,22 @@ export function DevotionalDetailScreen({ route, navigation }: any) {
         {prayer && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="hand-left-outline" size={18} color={colors.prayerBlue} />
+              <Ionicons
+                name="hand-left-outline"
+                size={18}
+                color={colors.prayerBlue}
+              />
               <Text style={styles.sectionTitle}>Your Prayer</Text>
             </View>
             <Card style={styles.prayerCard}>
               <Text style={styles.prayerText}>{prayer.content}</Text>
               {prayer.isAnswered && (
                 <View style={styles.answeredBadge}>
-                  <Ionicons name="checkmark-done" size={16} color={colors.success} />
+                  <Ionicons
+                    name="checkmark-done"
+                    size={16}
+                    color={colors.success}
+                  />
                   <Text style={styles.answeredText}>Answered</Text>
                   {prayer.answerNote && (
                     <Text style={styles.answerNote}>{prayer.answerNote}</Text>
@@ -113,7 +142,11 @@ export function DevotionalDetailScreen({ route, navigation }: any) {
         {journals.filter((j) => !j.questionId).length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="pencil-outline" size={18} color={colors.primary} />
+              <Ionicons
+                name="pencil-outline"
+                size={18}
+                color={colors.primary}
+              />
               <Text style={styles.sectionTitle}>Notes</Text>
             </View>
             {journals
@@ -142,24 +175,24 @@ const styles = StyleSheet.create({
   errorText: {
     ...typography.body,
     color: colors.error,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: spacing.xxl,
   },
   dateRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: spacing.sm,
   },
   dateText: {
     ...typography.captionBold,
     color: colors.primary,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   completedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   completedLabel: {
@@ -185,21 +218,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
     marginBottom: spacing.sm,
   },
   sectionTitle: {
     ...typography.captionBold,
     color: colors.primary,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 1,
   },
   authorName: {
     ...typography.caption,
     color: colors.textSecondary,
-    fontStyle: 'italic',
+    fontStyle: "italic",
     marginBottom: spacing.md,
   },
   reflectionText: {
@@ -216,7 +249,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   answerCard: {
-    backgroundColor: '#F5F9F4',
+    backgroundColor: "#F5F9F4",
     borderLeftWidth: 3,
     borderLeftColor: colors.primary,
   },
@@ -232,21 +265,21 @@ const styles = StyleSheet.create({
   noAnswer: {
     ...typography.caption,
     color: colors.textTertiary,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   prayerCard: {
-    backgroundColor: '#F0F4F8',
+    backgroundColor: "#F0F4F8",
     borderLeftWidth: 3,
     borderLeftColor: colors.prayerBlue,
   },
   prayerText: {
     ...typography.body,
     color: colors.text,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   answeredBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     marginTop: spacing.md,
     paddingTop: spacing.sm,
