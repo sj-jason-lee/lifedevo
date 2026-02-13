@@ -1,97 +1,165 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TextInput,
+  StyleSheet,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius } from '../../theme';
-import { Button } from '../../components/Button';
-import { useAppContext } from '../../services/store';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import type { RouteProp } from '@react-navigation/native';
+import type { RootStackParamList } from '../../navigation/AppNavigator';
+import { colors, fonts, spacing } from '../../theme';
 
-export function SignUpScreen({ navigation }: any) {
-  const { signUpWithEmail, login } = useAppContext();
+type Props = {
+  navigation: StackNavigationProp<RootStackParamList, 'SignUp'>;
+  route: RouteProp<RootStackParamList, 'SignUp'>;
+};
+
+export default function SignUpScreen({ navigation, route }: Props) {
+  const { role } = route.params;
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [churchCode, setChurchCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const handleSignUp = async () => {
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      Alert.alert('Missing Fields', 'Please fill in your name, email, and password.');
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
-      return;
-    }
+  const roleLabel = role === 'reader' ? 'Reader' : 'Shepherd';
 
-    setLoading(true);
-    const error = await signUpWithEmail(email.trim(), password, name.trim());
-    setLoading(false);
+  // Staggered entrance — 7 elements
+  const anims = useRef(
+    Array.from({ length: 7 }, () => new Animated.Value(0)),
+  ).current;
 
-    if (error) {
-      Alert.alert('Sign Up Failed', error);
-    }
+  useEffect(() => {
+    Animated.stagger(
+      70,
+      anims.map((a) =>
+        Animated.timing(a, { toValue: 1, duration: 380, useNativeDriver: true }),
+      ),
+    ).start();
+  }, []);
+
+  const row = (index: number, child: React.ReactNode) => (
+    <Animated.View
+      key={index}
+      style={{
+        opacity: anims[index],
+        transform: [
+          {
+            translateY: anims[index].interpolate({
+              inputRange: [0, 1],
+              outputRange: [18, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      {child}
+    </Animated.View>
+  );
+
+  const handleSignUp = () => {
+    const displayName = name.trim() || 'Friend';
+    navigation.navigate('Welcome', { role, name: displayName });
   };
 
-  const handleDemoLogin = () => {
-    login();
+  const handleGoogle = () => {
+    navigation.navigate('Welcome', { role, name: 'Friend' });
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          bounces={false}
         >
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>
-            Join your church's devotional community
-          </Text>
+          {/* Back button */}
+          <TouchableOpacity
+            style={styles.back}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
 
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Full Name</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="person-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
+          {row(
+            0,
+            <>
+              <Text style={styles.brand}>pasture</Text>
+              <Text style={styles.title}>Create your account</Text>
+            </>,
+          )}
+
+          {row(
+            1,
+            <TouchableOpacity
+              style={styles.roleChip}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('RoleSelect')}
+            >
+              <Text style={styles.roleChipText}>
+                {role === 'reader' ? '📖' : '🌿'} {roleLabel}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
+            </TouchableOpacity>,
+          )}
+
+          {row(
+            2,
+            <TouchableOpacity
+              style={styles.googleBtn}
+              activeOpacity={0.7}
+              onPress={handleGoogle}
+            >
+              <Text style={styles.googleIcon}>G</Text>
+              <Text style={styles.googleText}>Continue with Google</Text>
+            </TouchableOpacity>,
+          )}
+
+          {row(
+            3,
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or sign up with email</Text>
+              <View style={styles.dividerLine} />
+            </View>,
+          )}
+
+          {row(
+            4,
+            <View style={styles.field}>
+              <Text style={styles.label}>Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Your name"
+                placeholderTextColor={colors.border}
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+                autoCorrect={false}
+              />
+            </View>,
+          )}
+
+          {row(
+            5,
+            <>
+              <View style={styles.field}>
+                <Text style={styles.label}>Email</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Your name"
-                  placeholderTextColor={colors.textTertiary}
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                />
-              </View>
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="your@email.com"
-                  placeholderTextColor={colors.textTertiary}
+                  placeholder="you@example.com"
+                  placeholderTextColor={colors.border}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -99,71 +167,57 @@ export function SignUpScreen({ navigation }: any) {
                   autoCorrect={false}
                 />
               </View>
-            </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Create a password (min 6 chars)"
-                  placeholderTextColor={colors.textTertiary}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color={colors.textTertiary}
+              <View style={styles.field}>
+                <Text style={styles.label}>Password</Text>
+                <View style={styles.passwordWrap}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    placeholder="Create a password"
+                    placeholderTextColor={colors.border}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
                   />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.eyeBtn}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            </>,
+          )}
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Church Invite Code (Optional)</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="key-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your church's invite code"
-                  placeholderTextColor={colors.textTertiary}
-                  value={churchCode}
-                  onChangeText={setChurchCode}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                />
-              </View>
-              <Text style={styles.helperText}>
-                Ask your pastor or church admin for the invite code. You can also join later.
-              </Text>
-            </View>
+          {row(
+            6,
+            <>
+              <TouchableOpacity
+                style={styles.submitBtn}
+                activeOpacity={0.85}
+                onPress={handleSignUp}
+              >
+                <Text style={styles.submitText}>Create Account</Text>
+              </TouchableOpacity>
 
-            <Button
-              title="Create Account"
-              onPress={handleSignUp}
-              loading={loading}
-              size="lg"
-              style={styles.signUpButton}
-            />
-
-            <TouchableOpacity style={styles.demoButton} onPress={handleDemoLogin}>
-              <Text style={styles.demoButtonText}>Try Demo Mode</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
-              <Text style={styles.footerLink}>Sign In</Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                style={styles.footer}
+                activeOpacity={0.6}
+                onPress={() => navigation.navigate('SignIn')}
+              >
+                <Text style={styles.footerText}>
+                  Already have an account?{' '}
+                  <Text style={styles.footerLink}>Log in</Text>
+                </Text>
+              </TouchableOpacity>
+            </>,
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -171,90 +225,153 @@ export function SignUpScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.bg,
   },
   flex: {
     flex: 1,
   },
-  backButton: {
-    padding: spacing.md,
-    marginLeft: spacing.sm,
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
   },
-  content: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xxl,
+
+  back: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+    width: 40,
   },
-  title: {
-    ...typography.largeTitle,
-    color: colors.text,
+  brand: {
+    fontFamily: fonts.serif,
+    fontSize: 18,
+    color: colors.green,
+    letterSpacing: 2,
+    textAlign: 'center',
     marginBottom: spacing.xs,
   },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.xl,
-  },
-  form: {
-    gap: spacing.md,
-  },
-  inputContainer: {
-    gap: spacing.xs,
-  },
-  label: {
-    ...typography.captionBold,
+  title: {
+    fontFamily: fonts.serif,
+    fontSize: 28,
     color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.md,
   },
-  inputWrapper: {
+
+  roleChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
+    alignSelf: 'center',
     backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    marginBottom: spacing.lg,
   },
-  inputIcon: {
-    paddingLeft: spacing.md,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: spacing.sm,
-    ...typography.body,
+  roleChipText: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 14,
     color: colors.text,
   },
-  eyeButton: {
-    padding: spacing.md,
-  },
-  helperText: {
-    ...typography.small,
-    color: colors.textTertiary,
-    marginTop: 2,
-  },
-  signUpButton: {
-    marginTop: spacing.sm,
-  },
-  demoButton: {
-    alignSelf: 'center',
-    paddingVertical: spacing.sm,
-  },
-  demoButtonText: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    textDecorationLine: 'underline',
-  },
-  footer: {
+
+  googleBtn: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 28,
+    paddingVertical: 15,
+    gap: 10,
+    marginBottom: spacing.md,
+  },
+  googleIcon: {
+    fontFamily: fonts.sansBold,
+    fontSize: 18,
+    color: colors.text,
+  },
+  googleText: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 16,
+    color: colors.text,
+  },
+
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: spacing.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+
+  field: {
+    marginBottom: spacing.md,
+  },
+  label: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 14,
+    color: colors.text,
+    marginBottom: 6,
+  },
+  input: {
+    fontFamily: fonts.sans,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  passwordWrap: {
+    position: 'relative',
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeBtn: {
+    position: 'absolute',
+    right: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+
+  submitBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 17,
+    borderRadius: 28,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  submitText: {
+    fontFamily: fonts.sansSemiBold,
+    fontSize: 17,
+    color: colors.textInverse,
+  },
+
+  footer: {
+    alignItems: 'center',
   },
   footerText: {
-    ...typography.body,
-    color: colors.textSecondary,
+    fontFamily: fonts.sans,
+    fontSize: 15,
+    color: colors.textMuted,
   },
   footerLink: {
-    ...typography.bodyBold,
-    color: colors.primary,
+    fontFamily: fonts.sansSemiBold,
+    color: colors.link,
   },
 });

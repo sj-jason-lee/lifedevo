@@ -1,126 +1,44 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme';
-import { useAppContext } from '../services/store';
+import { createStackNavigator } from '@react-navigation/stack';
+import LandingScreen from '../screens/Onboarding/LandingScreen';
+import RoleSelectScreen from '../screens/Onboarding/RoleSelectScreen';
+import SignUpScreen from '../screens/Auth/SignUpScreen';
+import SignInScreen from '../screens/Auth/SignInScreen';
+import WelcomeScreen from '../screens/Onboarding/WelcomeScreen';
+import HomeScreen from '../screens/Home/HomeScreen';
 
-// Auth Screens
-import { WelcomeScreen } from '../screens/Auth/WelcomeScreen';
-import { SignInScreen } from '../screens/Auth/SignInScreen';
-import { SignUpScreen } from '../screens/Auth/SignUpScreen';
+export type UserRole = 'reader' | 'shepherd';
 
-// Main Screens
-import { TodayScreen } from '../screens/Today/TodayScreen';
-import { ArchiveScreen } from '../screens/Archive/ArchiveScreen';
-import { DevotionalDetailScreen } from '../screens/Archive/DevotionalDetailScreen';
-import { CommunityScreen } from '../screens/Community/CommunityScreen';
-import { MyJourneyScreen } from '../screens/MyJourney/MyJourneyScreen';
-import { SettingsScreen } from '../screens/Settings/SettingsScreen';
+export type RootStackParamList = {
+  Landing: undefined;
+  RoleSelect: undefined;
+  SignUp: { role: UserRole };
+  SignIn: undefined;
+  Welcome: { role: UserRole; name: string };
+  Home: { role: UserRole; name: string };
+};
 
-const AuthStack = createNativeStackNavigator();
-const MainTab = createBottomTabNavigator();
-const ArchiveStack = createNativeStackNavigator();
-const RootStack = createNativeStackNavigator();
+const Stack = createStackNavigator<RootStackParamList>();
 
-function ArchiveNavigator() {
-  return (
-    <ArchiveStack.Navigator>
-      <ArchiveStack.Screen
-        name="ArchiveList"
-        component={ArchiveScreen}
-        options={{ headerShown: false }}
-      />
-      <ArchiveStack.Screen
-        name="DevotionalDetail"
-        component={DevotionalDetailScreen}
-        options={{
-          title: 'Devotional',
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '600', fontSize: 16, color: colors.text },
-          headerShadowVisible: false,
-        }}
-      />
-    </ArchiveStack.Navigator>
-  );
-}
-
-function MainTabNavigator() {
-  return (
-    <MainTab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap;
-          switch (route.name) {
-            case 'Today':
-              iconName = focused ? 'sunny' : 'sunny-outline';
-              break;
-            case 'Archive':
-              iconName = focused ? 'library' : 'library-outline';
-              break;
-            case 'Community':
-              iconName = focused ? 'people' : 'people-outline';
-              break;
-            case 'Journey':
-              iconName = focused ? 'heart' : 'heart-outline';
-              break;
-            case 'Settings':
-              iconName = focused ? 'settings' : 'settings-outline';
-              break;
-            default:
-              iconName = 'ellipse-outline';
-          }
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textTertiary,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.borderLight,
-          paddingTop: 4,
-          height: 88,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '500',
-          marginTop: 2,
-        },
-      })}
-    >
-      <MainTab.Screen name="Today" component={TodayScreen} />
-      <MainTab.Screen name="Archive" component={ArchiveNavigator} />
-      <MainTab.Screen name="Community" component={CommunityScreen} />
-      <MainTab.Screen name="Journey" component={MyJourneyScreen} />
-      <MainTab.Screen name="Settings" component={SettingsScreen} />
-    </MainTab.Navigator>
-  );
-}
-
-function AuthNavigator() {
-  return (
-    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-      <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
-      <AuthStack.Screen name="SignIn" component={SignInScreen} />
-      <AuthStack.Screen name="SignUp" component={SignUpScreen} />
-    </AuthStack.Navigator>
-  );
-}
-
-export function AppNavigator() {
-  const { isAuthenticated } = useAppContext();
-
+export default function AppNavigator() {
   return (
     <NavigationContainer>
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated ? (
-          <RootStack.Screen name="Main" component={MainTabNavigator} />
-        ) : (
-          <RootStack.Screen name="Auth" component={AuthNavigator} />
-        )}
-      </RootStack.Navigator>
+      <Stack.Navigator
+        initialRouteName="Landing"
+        screenOptions={{ headerShown: false }}
+      >
+        <Stack.Screen name="Landing" component={LandingScreen} />
+        <Stack.Screen name="RoleSelect" component={RoleSelectScreen} />
+        <Stack.Screen name="SignUp" component={SignUpScreen} />
+        <Stack.Screen name="SignIn" component={SignInScreen} />
+        <Stack.Screen name="Welcome" component={WelcomeScreen} />
+        <Stack.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ gestureEnabled: false }}
+        />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }

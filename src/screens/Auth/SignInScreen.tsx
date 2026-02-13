@@ -1,60 +1,127 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Animated,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius } from '../../theme';
-import { Button } from '../../components/Button';
-import { useAppContext } from '../../services/store';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import type { RootStackParamList } from '../../navigation/AppNavigator';
+import { colors, fonts, spacing } from '../../theme';
 
-export function SignInScreen({ navigation }: any) {
-  const { loginWithEmail, login } = useAppContext();
+type Props = {
+  navigation: StackNavigationProp<RootStackParamList, 'SignIn'>;
+};
+
+export default function SignInScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const handleSignIn = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Missing Fields', 'Please enter your email and password.');
-      return;
-    }
+  // Staggered entrance — 5 elements
+  const anims = useRef(
+    Array.from({ length: 5 }, () => new Animated.Value(0)),
+  ).current;
 
-    setLoading(true);
-    const error = await loginWithEmail(email.trim(), password);
-    setLoading(false);
+  useEffect(() => {
+    Animated.stagger(
+      70,
+      anims.map((a) =>
+        Animated.timing(a, { toValue: 1, duration: 380, useNativeDriver: true }),
+      ),
+    ).start();
+  }, []);
 
-    if (error) {
-      Alert.alert('Sign In Failed', error);
-    }
+  const row = (index: number, child: React.ReactNode) => (
+    <Animated.View
+      key={index}
+      style={{
+        opacity: anims[index],
+        transform: [
+          {
+            translateY: anims[index].interpolate({
+              inputRange: [0, 1],
+              outputRange: [18, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      {child}
+    </Animated.View>
+  );
+
+  const handleSignIn = () => {
+    navigation.navigate('Home', { role: 'reader', name: 'Friend' });
   };
 
-  const handleDemoLogin = () => {
-    login();
+  const handleGoogle = () => {
+    navigation.navigate('Home', { role: 'reader', name: 'Friend' });
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+        >
+          <TouchableOpacity
+            style={styles.back}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
 
-        <View style={styles.content}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to continue your devotional journey</Text>
+          {row(
+            0,
+            <>
+              <Text style={styles.brand}>pasture</Text>
+              <Text style={styles.title}>Welcome back</Text>
+            </>,
+          )}
 
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
+          {row(
+            1,
+            <TouchableOpacity
+              style={styles.googleBtn}
+              activeOpacity={0.7}
+              onPress={handleGoogle}
+            >
+              <Text style={styles.googleIcon}>G</Text>
+              <Text style={styles.googleText}>Continue with Google</Text>
+            </TouchableOpacity>,
+          )}
+
+          {row(
+            2,
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or sign in with email</Text>
+              <View style={styles.dividerLine} />
+            </View>,
+          )}
+
+          {row(
+            3,
+            <>
+              <View style={styles.field}>
+                <Text style={styles.label}>Email</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="your@email.com"
-                  placeholderTextColor={colors.textTertiary}
+                  placeholder="you@example.com"
+                  placeholderTextColor={colors.border}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -62,151 +129,194 @@ export function SignInScreen({ navigation }: any) {
                   autoCorrect={false}
                 />
               </View>
-            </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your password"
-                  placeholderTextColor={colors.textTertiary}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color={colors.textTertiary}
+              <View style={styles.field}>
+                <Text style={styles.label}>Password</Text>
+                <View style={styles.passwordWrap}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    placeholder="Your password"
+                    placeholderTextColor={colors.border}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
                   />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.eyeBtn}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            </>,
+          )}
 
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </TouchableOpacity>
+          {row(
+            4,
+            <>
+              <TouchableOpacity
+                style={styles.submitBtn}
+                activeOpacity={0.85}
+                onPress={handleSignIn}
+              >
+                <Text style={styles.submitText}>Sign In</Text>
+              </TouchableOpacity>
 
-            <Button
-              title="Sign In"
-              onPress={handleSignIn}
-              loading={loading}
-              size="lg"
-              style={styles.signInButton}
-            />
-
-            <TouchableOpacity style={styles.demoButton} onPress={handleDemoLogin}>
-              <Text style={styles.demoButtonText}>Try Demo Mode</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-              <Text style={styles.footerLink}>Sign Up</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+              <TouchableOpacity
+                style={styles.footer}
+                activeOpacity={0.6}
+                onPress={() => navigation.navigate('RoleSelect')}
+              >
+                <Text style={styles.footerText}>
+                  Don't have an account?{' '}
+                  <Text style={styles.footerLink}>Get started</Text>
+                </Text>
+              </TouchableOpacity>
+            </>,
+          )}
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.bg,
   },
   flex: {
     flex: 1,
   },
-  backButton: {
-    padding: spacing.md,
-    marginLeft: spacing.sm,
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: spacing.xl,
-    justifyContent: 'center',
+
+  back: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+    width: 40,
   },
-  title: {
-    ...typography.largeTitle,
-    color: colors.text,
+  brand: {
+    fontFamily: fonts.serif,
+    fontSize: 18,
+    color: colors.green,
+    letterSpacing: 2,
+    textAlign: 'center',
     marginBottom: spacing.xs,
   },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
+  title: {
+    fontFamily: fonts.serif,
+    fontSize: 28,
+    color: colors.text,
+    textAlign: 'center',
     marginBottom: spacing.xl,
   },
-  form: {
-    gap: spacing.md,
-  },
-  inputContainer: {
-    gap: spacing.xs,
-  },
-  label: {
-    ...typography.captionBold,
-    color: colors.text,
-  },
-  inputWrapper: {
+
+  googleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
+    borderRadius: 28,
+    paddingVertical: 15,
+    gap: 10,
+    marginBottom: spacing.md,
   },
-  inputIcon: {
-    paddingLeft: spacing.md,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: spacing.sm,
-    ...typography.body,
+  googleIcon: {
+    fontFamily: fonts.sansBold,
+    fontSize: 18,
     color: colors.text,
   },
-  eyeButton: {
-    padding: spacing.md,
+  googleText: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 16,
+    color: colors.text,
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-  },
-  forgotPasswordText: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '500',
-  },
-  signInButton: {
-    marginTop: spacing.sm,
-  },
-  demoButton: {
-    alignSelf: 'center',
-    paddingVertical: spacing.sm,
-  },
-  demoButtonText: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    textDecorationLine: 'underline',
-  },
-  footer: {
+
+  divider: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: spacing.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+
+  field: {
+    marginBottom: spacing.md,
+  },
+  label: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 14,
+    color: colors.text,
+    marginBottom: 6,
+  },
+  input: {
+    fontFamily: fonts.sans,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  passwordWrap: {
+    position: 'relative',
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeBtn: {
+    position: 'absolute',
+    right: 14,
+    top: 0,
+    bottom: 0,
     justifyContent: 'center',
-    marginTop: spacing.xl,
+  },
+
+  submitBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 17,
+    borderRadius: 28,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  submitText: {
+    fontFamily: fonts.sansSemiBold,
+    fontSize: 17,
+    color: colors.textInverse,
+  },
+
+  footer: {
+    alignItems: 'center',
   },
   footerText: {
-    ...typography.body,
-    color: colors.textSecondary,
+    fontFamily: fonts.sans,
+    fontSize: 15,
+    color: colors.textMuted,
   },
   footerLink: {
-    ...typography.bodyBold,
-    color: colors.primary,
+    fontFamily: fonts.sansSemiBold,
+    color: colors.link,
   },
 });
