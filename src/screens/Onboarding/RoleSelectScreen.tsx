@@ -12,11 +12,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RootStackParamList } from '../../navigation/AppNavigator';
+import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import { colors, fonts, spacing } from '../../theme';
 
 type Props = {
-  navigation: StackNavigationProp<RootStackParamList, 'RoleSelect'>;
+  navigation: StackNavigationProp<AuthStackParamList, 'RoleSelect'>;
 };
 
 const { width: SCREEN_W } = Dimensions.get('window');

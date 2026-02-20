@@ -1,16 +1,15 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { RouteProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../../navigation/AppNavigator';
+import { CommonActions, useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../contexts/AuthContext';
 import { colors, fonts, spacing } from '../../theme';
 
-type Props = {
-  route: RouteProp<RootStackParamList, 'Home'>;
-};
-
-export default function HomeScreen({ route }: Props) {
-  const { role, name } = route.params;
+export default function HomeScreen() {
+  const { userProfile, signOut, resetOnboarding } = useAuth();
+  const navigation = useNavigation();
+  const role = userProfile?.role ?? 'reader';
+  const name = userProfile?.displayName ?? 'Friend';
   const roleLabel = role === 'reader' ? 'Reader' : 'Shepherd';
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -67,7 +66,7 @@ export default function HomeScreen({ route }: Props) {
           ]}
         >
           <Text style={styles.roleText}>
-            {role === 'reader' ? '📖' : '🌿'} {roleLabel}
+            {role === 'reader' ? '\u{1F4D6}' : '\u{1F33F}'} {roleLabel}
           </Text>
         </Animated.View>
         <Animated.Text
@@ -81,6 +80,33 @@ export default function HomeScreen({ route }: Props) {
         >
           Your home screen is coming soon.
         </Animated.Text>
+
+        <Animated.View style={{ opacity: subAnim, marginTop: spacing.xl, gap: spacing.sm }}>
+          <TouchableOpacity
+            style={styles.signOutBtn}
+            activeOpacity={0.7}
+            onPress={signOut}
+          >
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.signOutBtn, { borderColor: colors.green }]}
+            activeOpacity={0.7}
+            onPress={async () => {
+              await resetOnboarding();
+              requestAnimationFrame(() => {
+                navigation.dispatch(
+                  CommonActions.reset({ index: 0, routes: [{ name: 'Welcome' }] }),
+                );
+              });
+            }}
+          >
+            <Text style={[styles.signOutText, { color: colors.green }]}>
+              DEV: Reset Onboarding
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     </SafeAreaView>
   );
@@ -126,6 +152,18 @@ const styles = StyleSheet.create({
   sub: {
     fontFamily: fonts.sans,
     fontSize: 15,
+    color: colors.textMuted,
+  },
+  signOutBtn: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  signOutText: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 14,
     color: colors.textMuted,
   },
 });

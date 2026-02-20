@@ -12,10 +12,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { StackNavigationProp } from '@react-navigation/stack';
+import type { AuthStackParamList } from '../../navigation/AppNavigator';
 import { colors, fonts, spacing } from '../../theme';
 
 type Props = {
-  navigation: StackNavigationProp<any>;
+  navigation: StackNavigationProp<AuthStackParamList, 'Landing'>;
 };
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');

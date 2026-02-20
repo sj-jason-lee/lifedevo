@@ -10,6 +10,8 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
+import { AuthProvider } from './src/contexts/AuthContext';
+import { ToastProvider } from './src/contexts/ToastContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
@@ -31,8 +33,12 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <AppNavigator />
+      <AuthProvider>
+        <ToastProvider>
+          <StatusBar style="dark" />
+          <AppNavigator />
+        </ToastProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

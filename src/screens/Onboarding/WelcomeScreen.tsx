@@ -12,13 +12,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RouteProp } from '@react-navigation/native';
-import type { RootStackParamList, UserRole } from '../../navigation/AppNavigator';
+import type { AppStackParamList } from '../../navigation/AppNavigator';
+import { useAuth } from '../../contexts/AuthContext';
+import type { UserRole } from '../../types';
 import { colors, fonts, spacing } from '../../theme';
 
 type Props = {
-  navigation: StackNavigationProp<RootStackParamList, 'Welcome'>;
-  route: RouteProp<RootStackParamList, 'Welcome'>;
+  navigation: StackNavigationProp<AppStackParamList, 'Welcome'>;
 };
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -31,12 +31,12 @@ type Slide = {
 
 const readerSlides: Slide[] = [
   {
-    icon: '🌅',
+    icon: '\u{1F305}',
     headline: 'Your daily pasture\nawaits',
-    body: 'Each morning, a fresh devotional is waiting\nfor you — read, reflect, and be renewed.',
+    body: 'Each morning, a fresh devotional is waiting\nfor you \u2014 read, reflect, and be renewed.',
   },
   {
-    icon: '✍️',
+    icon: '\u270D\uFE0F',
     headline: 'Reflect and grow',
     body: 'Journal your thoughts, track your streak,\nand share insights with your community.',
   },
@@ -44,12 +44,12 @@ const readerSlides: Slide[] = [
 
 const shepherdSlides: Slide[] = [
   {
-    icon: '🌿',
+    icon: '\u{1F33F}',
     headline: 'Your flock is\nwaiting',
-    body: 'Write devotionals that reach your community\nevery morning — simple, focused, and personal.',
+    body: 'Write devotionals that reach your community\nevery morning \u2014 simple, focused, and personal.',
   },
   {
-    icon: '📊',
+    icon: '\u{1F4CA}',
     headline: 'Guide their\njourney',
     body: 'See how your community engages, responds,\nand grows through the reflections you share.',
   },
@@ -127,8 +127,9 @@ function AnimatedSlide({ slide, isActive }: { slide: Slide; isActive: boolean })
 
 /* ───────────────────── main screen ───────────────────── */
 
-export default function WelcomeScreen({ navigation, route }: Props) {
-  const { role, name } = route.params;
+export default function WelcomeScreen({ navigation }: Props) {
+  const { userProfile } = useAuth();
+  const role = userProfile?.role ?? 'reader';
   const slides = getSlides(role);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -152,6 +153,14 @@ export default function WelcomeScreen({ navigation, route }: Props) {
       useNativeDriver: true,
     }).start();
   }, [isLast]);
+
+  const handleLetsGo = () => {
+    if (role === 'shepherd') {
+      navigation.navigate('ShepherdProfileSetup');
+    } else {
+      navigation.navigate('JoinGroup');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -192,7 +201,7 @@ export default function WelcomeScreen({ navigation, route }: Props) {
               style={[styles.btn, { opacity: isLast ? 1 : 0 }]}
               activeOpacity={0.85}
               disabled={!isLast}
-              onPress={() => navigation.navigate('Home', { role, name })}
+              onPress={handleLetsGo}
             >
               <Text style={styles.btnText}>Let's go</Text>
             </TouchableOpacity>

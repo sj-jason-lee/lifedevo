@@ -9,27 +9,53 @@ import {
   Platform,
   ScrollView,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RouteProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../../navigation/AppNavigator';
+import type { AuthStackParamList } from '../../navigation/AppNavigator';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { colors, fonts, spacing } from '../../theme';
 
 type Props = {
-  navigation: StackNavigationProp<RootStackParamList, 'SignUp'>;
-  route: RouteProp<RootStackParamList, 'SignUp'>;
+  navigation: StackNavigationProp<AuthStackParamList, 'SignUp'>;
+  route: RouteProp<AuthStackParamList, 'SignUp'>;
 };
+
+function friendlyMessage(e: any): string {
+  if (e.code === 'auth/account-exists-different-role') return e.message;
+  switch (e.code) {
+    case 'auth/email-already-in-use': return 'An account with this email already exists.';
+    case 'auth/invalid-email': return 'Please enter a valid email address.';
+    case 'auth/weak-password': return 'Password must be at least 6 characters.';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential': return 'Invalid email or password.';
+    case 'auth/too-many-requests': return 'Too many attempts. Please try again later.';
+    case 'auth/network-request-failed': return 'Network error. Check your connection and try again.';
+    default: return 'Something went wrong. Please try again.';
+  }
+}
 
 export default function SignUpScreen({ navigation, route }: Props) {
   const { role } = route.params;
+  const { signUp, signInWithGoogle, error, clearError } = useAuth();
+  const { showToast } = useToast();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const roleLabel = role === 'reader' ? 'Reader' : 'Shepherd';
+
+  // Clear error when inputs change
+  useEffect(() => {
+    if (error) clearError();
+  }, [email, password, name]);
 
   // Staggered entrance — 7 elements
   const anims = useRef(
@@ -64,13 +90,31 @@ export default function SignUpScreen({ navigation, route }: Props) {
     </Animated.View>
   );
 
-  const handleSignUp = () => {
-    const displayName = name.trim() || 'Friend';
-    navigation.navigate('Welcome', { role, name: displayName });
+  const handleSignUp = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const displayName = name.trim() || 'Friend';
+      await signUp(email.trim(), password, displayName, role);
+    } catch (e: any) {
+      showToast({ message: friendlyMessage(e), type: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleGoogle = () => {
-    navigation.navigate('Welcome', { role, name: 'Friend' });
+  const handleGoogle = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await signInWithGoogle(role);
+    } catch (e: any) {
+      if (e.code !== 'SIGN_IN_CANCELLED') {
+        showToast({ message: friendlyMessage(e), type: 'error' });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -108,7 +152,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
               onPress={() => navigation.navigate('RoleSelect')}
             >
               <Text style={styles.roleChipText}>
-                {role === 'reader' ? '📖' : '🌿'} {roleLabel}
+                {role === 'reader' ? '\u{1F4D6}' : '\u{1F33F}'} {roleLabel}
               </Text>
               <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
             </TouchableOpacity>,
@@ -117,9 +161,10 @@ export default function SignUpScreen({ navigation, route }: Props) {
           {row(
             2,
             <TouchableOpacity
-              style={styles.googleBtn}
+              style={[styles.googleBtn, submitting && styles.disabled]}
               activeOpacity={0.7}
               onPress={handleGoogle}
+              disabled={submitting}
             >
               <Text style={styles.googleIcon}>G</Text>
               <Text style={styles.googleText}>Continue with Google</Text>
@@ -147,6 +192,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
                 onChangeText={setName}
                 autoCapitalize="words"
                 autoCorrect={false}
+                editable={!submitting}
               />
             </View>,
           )}
@@ -165,6 +211,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  editable={!submitting}
                 />
               </View>
 
@@ -179,6 +226,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
+                    editable={!submitting}
                   />
                   <TouchableOpacity
                     style={styles.eyeBtn}
@@ -199,11 +247,16 @@ export default function SignUpScreen({ navigation, route }: Props) {
             6,
             <>
               <TouchableOpacity
-                style={styles.submitBtn}
+                style={[styles.submitBtn, submitting && styles.disabled]}
                 activeOpacity={0.85}
                 onPress={handleSignUp}
+                disabled={submitting}
               >
-                <Text style={styles.submitText}>Create Account</Text>
+                {submitting ? (
+                  <ActivityIndicator color={colors.textInverse} />
+                ) : (
+                  <Text style={styles.submitText}>Create Account</Text>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -348,6 +401,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  errorText: {
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    color: '#D32F2F',
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
   submitBtn: {
     backgroundColor: colors.primary,
     paddingVertical: 17,
@@ -360,6 +420,9 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sansSemiBold,
     fontSize: 17,
     color: colors.textInverse,
+  },
+  disabled: {
+    opacity: 0.6,
   },
 
   footer: {
