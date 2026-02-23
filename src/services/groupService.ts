@@ -1,5 +1,5 @@
 import firestore from '@react-native-firebase/firestore';
-import type { Group } from '../types';
+import type { Group, Membership } from '../types';
 
 const groupsCollection = () => firestore().collection('groups');
 const membershipsCollection = () => firestore().collection('memberships');
@@ -41,6 +41,20 @@ export async function createGroup(
   });
 
   return { groupId: groupRef.id, inviteCode };
+}
+
+export async function getUserMemberships(userId: string): Promise<Membership[]> {
+  const snapshot = await membershipsCollection()
+    .where('userId', '==', userId)
+    .get();
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    groupId: doc.data().groupId,
+    userId: doc.data().userId,
+    role: doc.data().role,
+    joinedAt: doc.data().joinedAt?.toDate() ?? new Date(),
+  }));
 }
 
 export async function joinGroupByCode(
