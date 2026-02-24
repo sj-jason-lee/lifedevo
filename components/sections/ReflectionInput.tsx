@@ -12,12 +12,9 @@ import { FontFamily, TypeScale } from '../../constants/typography';
 import { Config } from '../../constants/config';
 import { AnimatedPressable } from '../ui/AnimatedPressable';
 import { useReflections } from '../../lib/ReflectionContext';
-import { useOnboarding } from '../../lib/OnboardingContext';
 
 interface ReflectionInputProps {
   devotionalId: string;
-  devotionalTitle: string;
-  scripture: string;
   questionIndex: number;
   questionText: string;
 }
@@ -26,18 +23,16 @@ const AnimatedView = Animated.View;
 
 export const ReflectionInput = ({
   devotionalId,
-  devotionalTitle,
-  scripture,
   questionIndex,
   questionText,
 }: ReflectionInputProps): JSX.Element => {
-  const { getAnswer, updateAnswer, shareReflection, isShared } =
+  const { getAnswer, updateAnswer, getShareFlag, setShareFlag, isShared } =
     useReflections();
-  const { userName, initials, churchCode } = useOnboarding();
   const [text, setText] = useState(() =>
     getAnswer(devotionalId, questionIndex)
   );
   const shared = isShared(devotionalId, questionIndex);
+  const shareFlag = getShareFlag(devotionalId, questionIndex);
   const focusProgress = useSharedValue(0);
 
   const handleChangeText = useCallback(
@@ -56,19 +51,9 @@ export const ReflectionInput = ({
     focusProgress.value = withTiming(0, { duration: 250 });
   };
 
-  const handleShare = () => {
-    if (!text.trim() || shared) return;
-    shareReflection({
-      devotionalId,
-      devotionalTitle,
-      scripture,
-      questionIndex,
-      questionText,
-      answerText: text.trim(),
-      authorName: userName || 'You',
-      authorInitials: initials || 'ME',
-      churchCode,
-    });
+  const handleToggleShare = () => {
+    if (shared) return; // already shared — can't toggle
+    setShareFlag(devotionalId, questionIndex, !shareFlag);
   };
 
   const borderStyle = useAnimatedStyle(() => ({
@@ -102,20 +87,28 @@ export const ReflectionInput = ({
 
       {text.trim().length > 0 && (
         <AnimatedPressable
-          style={[styles.shareButton, shared && styles.shareButtonActive]}
-          onPress={handleShare}
+          style={[
+            styles.toggleRow,
+            shared && styles.toggleRowShared,
+          ]}
+          onPress={handleToggleShare}
           haptic={!shared}
         >
           <Feather
-            name={shared ? 'check-circle' : 'send'}
-            size={14}
-            color={shared ? Colors.accent : Colors.textMuted}
+            name={shared ? 'check-circle' : shareFlag ? 'users' : 'lock'}
+            size={13}
+            color={shared ? Colors.accent : shareFlag ? Colors.accent : Colors.textMuted}
           />
           <Text
-            style={[styles.shareText, shared && styles.shareTextActive]}
+            style={[
+              styles.toggleLabel,
+              shared && styles.toggleLabelShared,
+              !shared && shareFlag && styles.toggleLabelActive,
+            ]}
           >
-            {shared ? 'Shared' : 'Share with community'}
+            {shared ? 'Shared' : shareFlag ? 'Share with church' : 'Keep private'}
           </Text>
+          {!shared && shareFlag && <View style={styles.toggleDot} />}
         </AnimatedPressable>
       )}
     </View>
@@ -153,25 +146,33 @@ const styles = StyleSheet.create({
     padding: 16,
     minHeight: 80,
   },
-  shareButton: {
+  toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-end',
     gap: 6,
     marginTop: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     borderRadius: Config.radius.sm,
   },
-  shareButtonActive: {
+  toggleRowShared: {
     backgroundColor: Colors.accentSoft,
   },
-  shareText: {
+  toggleLabel: {
     ...TypeScale.mono,
     color: Colors.textMuted,
-    textTransform: 'uppercase',
   },
-  shareTextActive: {
+  toggleLabelActive: {
     color: Colors.accent,
+  },
+  toggleLabelShared: {
+    color: Colors.accent,
+  },
+  toggleDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: Colors.accent,
   },
 });

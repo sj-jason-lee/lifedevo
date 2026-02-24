@@ -18,8 +18,11 @@ import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
 import { NoiseOverlay } from '../../components/ui/NoiseOverlay';
 import { ReflectionInput } from '../../components/sections/ReflectionInput';
 import { useFadeIn } from '../../hooks/useFadeIn';
-import { getDevotionalById } from '../../lib/dummyData';
+import { useDevotional } from '../../hooks/useDevotional';
 import { useCompletions } from '../../lib/CompletionContext';
+import { useReflections } from '../../lib/ReflectionContext';
+import { useOnboarding } from '../../lib/OnboardingContext';
+import { useChurch } from '../../hooks/useChurch';
 
 const formatDate = (dateStr: string): string => {
   const date = new Date(dateStr + 'T00:00:00');
@@ -34,9 +37,29 @@ const formatDate = (dateStr: string): string => {
 export default function DevotionalDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const devotional = getDevotionalById(id ?? '');
+  const { devotional, isLoading: devotionalLoading } = useDevotional(id);
   const { isComplete: checkComplete, toggleComplete } = useCompletions();
+  const { shareToggledAnswers } = useReflections();
+  const { userName, initials, churchCode } = useOnboarding();
+  const { church } = useChurch();
   const isComplete = devotional ? checkComplete(devotional.id) : false;
+
+  const handleComplete = () => {
+    if (!devotional) return;
+    const wasComplete = isComplete;
+    toggleComplete(devotional.id);
+    // Share answers only when marking complete for the first time
+    if (!wasComplete) {
+      shareToggledAnswers(devotional.id, {
+        title: devotional.title,
+        scripture: devotional.scripture,
+        questions: devotional.reflectQuestions,
+        authorName: userName || 'You',
+        authorInitials: initials || 'ME',
+        churchCode: church?.inviteCode ?? churchCode,
+      });
+    }
+  };
 
   const headerFade = useFadeIn(0);
   const titleFade = useFadeIn(Config.animation.stagger.text);
@@ -115,8 +138,6 @@ export default function DevotionalDetailScreen() {
             <ReflectionInput
               key={i}
               devotionalId={devotional.id}
-              devotionalTitle={devotional.title}
-              scripture={devotional.scripture}
               questionIndex={i}
               questionText={question}
             />
@@ -140,7 +161,7 @@ export default function DevotionalDetailScreen() {
               styles.completeButton,
               isComplete && styles.completeButtonActive,
             ]}
-            onPress={() => toggleComplete(devotional.id)}
+            onPress={handleComplete}
           >
             {isComplete ? (
               <LinearGradient

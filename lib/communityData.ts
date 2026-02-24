@@ -16,6 +16,7 @@ export const mockCommunityReflections: SharedReflection[] = [
     sharedAt: '2026-02-23T08:15:00Z',
     isCurrentUser: false,
     churchCode: 'GRACE2026',
+    userId: 'mock-user-grace',
   },
   {
     id: 'comm-2',
@@ -32,6 +33,7 @@ export const mockCommunityReflections: SharedReflection[] = [
     sharedAt: '2026-02-23T07:42:00Z',
     isCurrentUser: false,
     churchCode: 'GRACE2026',
+    userId: 'mock-user-david',
   },
   {
     id: 'comm-3',
@@ -48,6 +50,7 @@ export const mockCommunityReflections: SharedReflection[] = [
     sharedAt: '2026-02-22T19:30:00Z',
     isCurrentUser: false,
     churchCode: 'GRACE2026',
+    userId: 'mock-user-hannah',
   },
   {
     id: 'comm-4',
@@ -64,6 +67,7 @@ export const mockCommunityReflections: SharedReflection[] = [
     sharedAt: '2026-02-22T14:20:00Z',
     isCurrentUser: false,
     churchCode: 'GRACE2026',
+    userId: 'mock-user-michael',
   },
   {
     id: 'comm-5',
@@ -80,6 +84,7 @@ export const mockCommunityReflections: SharedReflection[] = [
     sharedAt: '2026-02-21T20:10:00Z',
     isCurrentUser: false,
     churchCode: 'GRACE2026',
+    userId: 'mock-user-sarah',
   },
   {
     id: 'comm-6',
@@ -96,6 +101,7 @@ export const mockCommunityReflections: SharedReflection[] = [
     sharedAt: '2026-02-20T21:45:00Z',
     isCurrentUser: false,
     churchCode: 'GRACE2026',
+    userId: 'mock-user-david',
   },
   {
     id: 'comm-7',
@@ -112,6 +118,7 @@ export const mockCommunityReflections: SharedReflection[] = [
     sharedAt: '2026-02-19T18:30:00Z',
     isCurrentUser: false,
     churchCode: 'GRACE2026',
+    userId: 'mock-user-grace',
   },
   {
     id: 'comm-8',
@@ -128,5 +135,6 @@ export const mockCommunityReflections: SharedReflection[] = [
     sharedAt: '2026-02-19T09:15:00Z',
     isCurrentUser: false,
     churchCode: 'GRACE2026',
+    userId: 'mock-user-josh',
   },
 ];

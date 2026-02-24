@@ -14,7 +14,6 @@ import Animated, {
   interpolateColor,
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
@@ -56,9 +55,9 @@ export default function NameScreen() {
     ),
   }));
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!canContinue) return;
-    setUserName(name.trim());
+    await setUserName(name.trim());
     router.push('/onboarding/church');
   };
 
@@ -77,12 +76,7 @@ export default function NameScreen() {
         >
           {/* Header */}
           <Animated.View style={[styles.header, headerFade]}>
-            <AnimatedPressable
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Feather name="arrow-left" size={22} color={Colors.textPrimary} />
-            </AnimatedPressable>
+            <View />
             <View style={styles.stepBadge}>
               <Text style={styles.stepBadgeText}>STEP 1 OF 2</Text>
             </View>

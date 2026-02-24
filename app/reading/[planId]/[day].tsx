@@ -10,7 +10,7 @@ import { Config } from '../../../constants/config';
 import { AnimatedPressable } from '../../../components/ui/AnimatedPressable';
 import { NoiseOverlay } from '../../../components/ui/NoiseOverlay';
 import { useFadeIn } from '../../../hooks/useFadeIn';
-import { getPlanDay } from '../../../lib/dummyData';
+import { getPlanDay } from '../../../lib/readingPlanData';
 import { useReadingPlan } from '../../../lib/ReadingPlanContext';
 
 export default function PassageDetailScreen() {

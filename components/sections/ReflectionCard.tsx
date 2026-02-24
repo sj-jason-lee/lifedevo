@@ -8,7 +8,7 @@ import { useFadeIn } from '../../hooks/useFadeIn';
 import type { SharedReflection } from '../../types';
 
 interface ReflectionCardProps {
-  reflection: SharedReflection;
+  reflections: SharedReflection[];
   index: number;
 }
 
@@ -27,11 +27,12 @@ const formatRelativeDate = (dateStr: string): string => {
 };
 
 export const ReflectionCard = ({
-  reflection,
+  reflections,
   index,
 }: ReflectionCardProps): JSX.Element => {
   const fadeIn = useFadeIn(index * Config.animation.stagger.card);
-  const isUser = reflection.isCurrentUser;
+  const first = reflections[0];
+  const isUser = first.isCurrentUser;
 
   const cardColors: readonly [string, string, ...string[]] = isUser
     ? [Colors.accentSoft, Colors.surfaceElevated]
@@ -59,14 +60,14 @@ export const ReflectionCard = ({
                 isUser && styles.avatarTextUser,
               ]}
             >
-              {reflection.authorInitials}
+              {first.authorInitials}
             </Text>
           </View>
           <View style={styles.authorInfo}>
-            <Text style={styles.authorName}>{reflection.authorName}</Text>
+            <Text style={styles.authorName}>{first.authorName}</Text>
             <Text style={styles.authorMeta}>
-              {formatRelativeDate(reflection.sharedAt)} ·{' '}
-              {reflection.devotionalTitle}
+              {formatRelativeDate(first.sharedAt)} ·{' '}
+              {first.devotionalTitle}
             </Text>
           </View>
         </View>
@@ -74,20 +75,25 @@ export const ReflectionCard = ({
         {/* Divider */}
         <View style={styles.divider} />
 
-        {/* Question */}
-        <Text style={styles.question}>
-          &ldquo;{reflection.questionText}&rdquo;
-        </Text>
-
-        {/* Answer */}
-        <Text style={styles.answer}>{reflection.answerText}</Text>
+        {/* Q&A pairs */}
+        {reflections.map((r, i) => (
+          <View key={r.id} style={i > 0 ? styles.qaSpacing : undefined}>
+            <Text style={styles.questionLabel}>
+              Q{r.questionIndex + 1}
+            </Text>
+            <Text style={styles.question}>
+              {r.questionText}
+            </Text>
+            <Text style={styles.answer}>{r.answerText}</Text>
+          </View>
+        ))}
 
         {/* Divider */}
         <View style={styles.divider} />
 
         {/* Scripture pill */}
         <View style={styles.scripturePill}>
-          <Text style={styles.scriptureText}>{reflection.scripture}</Text>
+          <Text style={styles.scriptureText}>{first.scripture}</Text>
         </View>
       </LinearGradient>
     </Animated.View>
@@ -149,12 +155,20 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
     marginVertical: 16,
   },
+  qaSpacing: {
+    marginTop: 16,
+  },
+  questionLabel: {
+    ...TypeScale.monoLabel,
+    color: Colors.textAccent,
+    marginBottom: 4,
+  },
   question: {
     fontSize: 17,
     lineHeight: 17 * 1.4,
     fontFamily: FontFamily.drama,
     color: Colors.textSecondary,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   answer: {
     ...TypeScale.body,

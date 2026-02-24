@@ -16,13 +16,14 @@ import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
 import { NoiseOverlay } from '../../components/ui/NoiseOverlay';
 import { useFadeIn } from '../../hooks/useFadeIn';
 
-export default function WelcomeScreen() {
+export default function AuthWelcomeScreen() {
   const insets = useSafeAreaInsets();
 
   const logoFade = useFadeIn(0);
   const taglineFade = useFadeIn(Config.animation.stagger.text * 2);
   const lineFade = useFadeIn(Config.animation.stagger.text * 3);
   const ctaFade = useFadeIn(Config.animation.stagger.text * 4);
+  const secondaryFade = useFadeIn(Config.animation.stagger.text * 5);
 
   // Pulsing glow for CTA
   const glowOpacity = useSharedValue(0.3);
@@ -63,11 +64,11 @@ export default function WelcomeScreen() {
           </Animated.View>
         </View>
 
-        {/* CTA */}
+        {/* CTAs */}
         <Animated.View style={ctaFade}>
           <AnimatedPressable
             style={styles.ctaWrapper}
-            onPress={() => router.push('/onboarding/name')}
+            onPress={() => router.push('/auth/sign-up')}
           >
             <Animated.View style={[styles.ctaGlow, glowStyle]} />
             <LinearGradient
@@ -76,8 +77,17 @@ export default function WelcomeScreen() {
               end={{ x: 1, y: 0 }}
               style={styles.ctaGradient}
             >
-              <Text style={styles.ctaText}>Get Started</Text>
+              <Text style={styles.ctaText}>Create Account</Text>
             </LinearGradient>
+          </AnimatedPressable>
+        </Animated.View>
+
+        <Animated.View style={secondaryFade}>
+          <AnimatedPressable
+            style={styles.secondaryButton}
+            onPress={() => router.push('/auth/sign-in')}
+          >
+            <Text style={styles.secondaryText}>Sign In</Text>
           </AnimatedPressable>
         </Animated.View>
       </View>
@@ -123,7 +133,7 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
 
-  // CTA
+  // Primary CTA
   ctaWrapper: {
     borderRadius: Config.radius.md,
     overflow: 'hidden',
@@ -149,6 +159,25 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.headingSemiBold,
     fontSize: 17,
     color: Colors.textDark,
+    letterSpacing: 0.5,
+  },
+
+  // Secondary CTA
+  secondaryButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 28,
+    borderRadius: Config.radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceCard,
+    marginTop: 12,
+  },
+  secondaryText: {
+    fontFamily: FontFamily.headingSemiBold,
+    fontSize: 17,
+    color: Colors.textPrimary,
     letterSpacing: 0.5,
   },
 });

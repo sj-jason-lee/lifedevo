@@ -11,10 +11,11 @@ import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
 import { NoiseOverlay } from '../../components/ui/NoiseOverlay';
 import { ReadingProgress } from '../../components/sections/ReadingProgress';
 import { useFadeIn } from '../../hooks/useFadeIn';
-import { allDevotionals, readingPlan } from '../../lib/dummyData';
+import { useDevotionals } from '../../hooks/useDevotionals';
+import { useChurch } from '../../hooks/useChurch';
+import { readingPlan } from '../../lib/readingPlanData';
 import { useCompletions } from '../../lib/CompletionContext';
-
-const TODAY = '2026-02-23';
+import type { Devotional } from '../../types';
 
 const formatDate = (dateStr: string): string => {
   const date = new Date(dateStr + 'T00:00:00');
@@ -24,8 +25,12 @@ const formatDate = (dateStr: string): string => {
 export default function ReadScreen() {
   const insets = useSafeAreaInsets();
   const { isComplete } = useCompletions();
+  const { church, isLoading: churchLoading } = useChurch();
+  const churchId = churchLoading ? undefined : church?.id ?? null;
+  const { devotionals } = useDevotionals(churchId);
   const headerFade = useFadeIn(0);
   const planFade = useFadeIn(Config.animation.stagger.card);
+  const readingPlanFade = useFadeIn(Config.animation.stagger.card * 2);
 
   return (
     <View style={styles.container}>
@@ -44,26 +49,27 @@ export default function ReadScreen() {
           <View style={styles.accentLine} />
         </Animated.View>
 
-        {/* Reading Plan */}
-        <View style={styles.sectionSpacing}>
-          <ReadingProgress plan={readingPlan} index={1} />
-        </View>
-
         {/* All Devotionals */}
         <Animated.View style={planFade}>
           <Text style={styles.listHeading}>All Devotionals</Text>
         </Animated.View>
 
-        {allDevotionals.map((devo, i) => (
+        {devotionals.map((devo, i) => (
           <DevotionalListCard key={devo.id} devotional={devo} index={i} completed={isComplete(devo.id)} />
         ))}
+
+        {/* Reading Plan */}
+        <Animated.View style={[styles.sectionSpacing, { marginTop: Config.spacing.sectionGap }, readingPlanFade]}>
+          <Text style={styles.listHeading}>Reading Plan</Text>
+          <ReadingProgress plan={readingPlan} index={1} />
+        </Animated.View>
       </ScrollView>
     </View>
   );
 }
 
 interface DevotionalListCardProps {
-  devotional: (typeof allDevotionals)[number];
+  devotional: Devotional;
   index: number;
   completed: boolean;
 }
@@ -72,7 +78,7 @@ const DevotionalListCard = ({ devotional, index, completed }: DevotionalListCard
   const fadeStyle = useFadeIn(
     Config.animation.stagger.card * (index + 2)
   );
-  const isToday = devotional.date === TODAY;
+  const isToday = devotional.date === new Date().toISOString().slice(0, 10);
 
   return (
     <Animated.View style={[styles.cardSpacing, fadeStyle]}>

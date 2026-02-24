@@ -17,7 +17,7 @@ import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
 import { GradientCard } from '../../components/ui/GradientCard';
 import { NoiseOverlay } from '../../components/ui/NoiseOverlay';
 import { useFadeIn } from '../../hooks/useFadeIn';
-import { getPlanById } from '../../lib/dummyData';
+import { getPlanById } from '../../lib/readingPlanData';
 import { useReadingPlan } from '../../lib/ReadingPlanContext';
 import type { ReadingPlanDay } from '../../types';
 

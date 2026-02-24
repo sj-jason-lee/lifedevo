@@ -14,8 +14,10 @@ import { useFadeIn } from '../../hooks/useFadeIn';
 import { useCompletions } from '../../lib/CompletionContext';
 import { useReflections } from '../../lib/ReflectionContext';
 import { useOnboarding } from '../../lib/OnboardingContext';
-import { getDevotionalById } from '../../lib/dummyData';
-import type { DevotionalAnswers } from '../../types';
+import { useAuth } from '../../lib/AuthContext';
+import { useDevotionals } from '../../hooks/useDevotionals';
+import { useChurch } from '../../hooks/useChurch';
+import type { Devotional, DevotionalAnswers } from '../../types';
 
 // --- Helper functions ---
 
@@ -72,11 +74,12 @@ const countReflections = (
 };
 
 const collectUserReflections = (
-  answers: Record<string, DevotionalAnswers>
+  answers: Record<string, DevotionalAnswers>,
+  getById: (id: string) => Devotional | undefined
 ): GroupedReflection[] => {
   const results: GroupedReflection[] = [];
   for (const entry of Object.values(answers)) {
-    const devo = getDevotionalById(entry.devotionalId);
+    const devo = getById(entry.devotionalId);
     if (!devo) continue;
     const pairs: QAPair[] = [];
     for (const [qIdx, text] of Object.entries(entry.answers)) {
@@ -149,11 +152,12 @@ interface CompletionHistoryCardProps {
   devotionalId: string;
   completedDate: string;
   index: number;
+  getById: (id: string) => Devotional | undefined;
 }
 
-const CompletionHistoryCard = ({ devotionalId, completedDate, index }: CompletionHistoryCardProps) => {
+const CompletionHistoryCard = ({ devotionalId, completedDate, index, getById }: CompletionHistoryCardProps) => {
   const fadeStyle = useFadeIn(Config.animation.stagger.card * (index + 5));
-  const devo = getDevotionalById(devotionalId);
+  const devo = getById(devotionalId);
   if (!devo) return null;
 
   return (
@@ -185,7 +189,11 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { completedIds, completedAt } = useCompletions();
   const { answers } = useReflections();
-  const { userName, initials } = useOnboarding();
+  const { userName, initials, isAuthor, isAdmin } = useOnboarding();
+  const { church, memberCount, isLoading: churchLoading } = useChurch();
+  const { signOut } = useAuth();
+  const churchId = churchLoading ? undefined : church?.id ?? null;
+  const { getById } = useDevotionals(churchId);
 
   const streak = useMemo(
     () => computeStreak(completedAt, completedIds),
@@ -196,8 +204,8 @@ export default function ProfileScreen() {
     [answers]
   );
   const userReflections = useMemo(
-    () => collectUserReflections(answers),
-    [answers]
+    () => collectUserReflections(answers, getById),
+    [answers, getById]
   );
 
   const headerFade = useFadeIn(0);
@@ -218,8 +226,18 @@ export default function ProfileScreen() {
       >
         {/* Header */}
         <Animated.View style={headerFade}>
-          <Text style={styles.headerLabel}>YOUR JOURNEY</Text>
-          <Text style={styles.headerTitle}>Profile</Text>
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.headerLabel}>YOUR JOURNEY</Text>
+              <Text style={styles.headerTitle}>Profile</Text>
+            </View>
+            <AnimatedPressable
+              onPress={() => router.push('/settings')}
+              style={styles.settingsButton}
+            >
+              <Feather name="settings" size={22} color={Colors.textSecondary} />
+            </AnimatedPressable>
+          </View>
           <View style={styles.accentLine} />
         </Animated.View>
 
@@ -247,6 +265,52 @@ export default function ProfileScreen() {
             <Text style={styles.statLabel}>DAY STREAK</Text>
           </GradientCard>
         </Animated.View>
+
+        {/* Your Church */}
+        {churchLoading ? null : church ? (
+          <View style={styles.adminSection}>
+            <AnimatedPressable
+              style={styles.adminButton}
+              onPress={() => router.push('/church')}
+            >
+              <Feather name="home" size={18} color={Colors.accent} />
+              <Text style={styles.adminButtonText}>{church.name}</Text>
+              <Text style={styles.churchMemberCount}>{memberCount}</Text>
+              <View style={styles.adminChevron}>
+                <Feather name="chevron-right" size={18} color={Colors.textMuted} />
+              </View>
+            </AnimatedPressable>
+          </View>
+        ) : (isAuthor || isAdmin) ? (
+          <View style={styles.adminSection}>
+            <AnimatedPressable
+              style={styles.adminButton}
+              onPress={() => router.push('/church')}
+            >
+              <Feather name="plus" size={18} color={Colors.accent} />
+              <Text style={styles.adminButtonText}>Create a Church</Text>
+              <View style={styles.adminChevron}>
+                <Feather name="chevron-right" size={18} color={Colors.textMuted} />
+              </View>
+            </AnimatedPressable>
+          </View>
+        ) : null}
+
+        {/* Admin Dashboard (authors/admins only) */}
+        {isAuthor && (
+          <View style={styles.adminSection}>
+            <AnimatedPressable
+              style={styles.adminButton}
+              onPress={() => router.push('/admin')}
+            >
+              <Feather name="edit" size={18} color={Colors.accent} />
+              <Text style={styles.adminButtonText}>Admin Dashboard</Text>
+              <View style={styles.adminChevron}>
+                <Feather name="chevron-right" size={18} color={Colors.textMuted} />
+              </View>
+            </AnimatedPressable>
+          </View>
+        )}
 
         {/* Your Reflections */}
         {userReflections.length > 0 && (
@@ -276,10 +340,19 @@ export default function ProfileScreen() {
                 devotionalId={id}
                 completedDate={completedAt(id) ?? new Date().toISOString()}
                 index={i}
+                getById={getById}
               />
             ))}
           </>
         )}
+
+        {/* Sign Out */}
+        <View style={styles.signOutSection}>
+          <AnimatedPressable style={styles.signOutButton} onPress={signOut}>
+            <Feather name="log-out" size={18} color={Colors.textMuted} />
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </AnimatedPressable>
+        </View>
       </ScrollView>
     </View>
   );
@@ -297,6 +370,18 @@ const styles = StyleSheet.create({
   },
 
   // Header
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  settingsButton: {
+    padding: 8,
+    marginTop: 4,
+  },
   headerLabel: {
     ...TypeScale.mono,
     color: Colors.textAccent,
@@ -372,6 +457,36 @@ const styles = StyleSheet.create({
     ...TypeScale.mono,
     color: Colors.textMuted,
     textAlign: 'center',
+  },
+
+  // Admin button
+  adminSection: {
+    marginBottom: Config.spacing.sectionGap,
+  },
+  adminButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.surfaceCard,
+    borderWidth: 1,
+    borderColor: Colors.borderAccent,
+    borderRadius: Config.radius.lg,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  adminButtonText: {
+    flex: 1,
+    fontFamily: FontFamily.headingSemiBold,
+    fontSize: 16,
+    color: Colors.textPrimary,
+  },
+  churchMemberCount: {
+    ...TypeScale.mono,
+    color: Colors.textMuted,
+    marginRight: 4,
+  },
+  adminChevron: {
+    marginLeft: 'auto',
   },
 
   // Section heading
@@ -453,6 +568,28 @@ const styles = StyleSheet.create({
   },
   historyMeta: {
     ...TypeScale.mono,
+    color: Colors.textMuted,
+  },
+
+  // Sign Out
+  signOutSection: {
+    marginTop: Config.spacing.sectionGap,
+    alignItems: 'center',
+    paddingBottom: 20,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: Config.radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceCard,
+  },
+  signOutText: {
+    ...TypeScale.body,
     color: Colors.textMuted,
   },
 });

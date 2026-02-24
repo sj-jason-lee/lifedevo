@@ -1,3 +1,6 @@
+export type DevotionalStatus = 'draft' | 'scheduled' | 'published' | 'archived';
+export type UserRole = 'reader' | 'author' | 'admin';
+
 export interface Devotional {
   id: string;
   title: string;
@@ -9,6 +12,26 @@ export interface Devotional {
   date: string;
   readTimeMinutes: number;
   author: string;
+  churchId: string | null;
+}
+
+export interface DevotionalRow {
+  id: string;
+  title: string;
+  scripture: string;
+  scripture_text: string;
+  body: string;
+  reflect_questions: string[];
+  prayer: string;
+  date: string;
+  read_time_minutes: number;
+  author_name: string;
+  author_id: string | null;
+  church_id: string | null;
+  status: DevotionalStatus;
+  scheduled_date: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ReadingPlanDay {
@@ -32,6 +55,7 @@ export interface ReadingPlanStore {
 export interface DevotionalAnswers {
   devotionalId: string;
   answers: Record<number, string>; // questionIndex → answer text
+  shareFlags: Record<number, boolean>; // questionIndex → share with community (default true)
   lastModified: string;
 }
 
@@ -48,6 +72,7 @@ export interface SharedReflection {
   sharedAt: string;
   isCurrentUser: boolean;
   churchCode: string;
+  userId: string;
 }
 
 export interface ReflectionsStore {
@@ -64,4 +89,27 @@ export interface OnboardingStore {
   completed: boolean;
   userName: string;
   churchCode: string;
+  role?: UserRole;
+}
+
+// Church Management
+export type ChurchRole = 'leader' | 'member';
+
+export interface Church {
+  id: string;
+  name: string;
+  description: string;
+  inviteCode: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface ChurchMember {
+  id: string;
+  churchId: string;
+  userId: string;
+  churchRole: ChurchRole;
+  joinedAt: string;
+  userName: string;
+  initials: string;
 }

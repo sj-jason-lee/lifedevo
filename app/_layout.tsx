@@ -24,48 +24,62 @@ import { ReflectionProvider } from '../lib/ReflectionContext';
 import { CompletionProvider } from '../lib/CompletionContext';
 import { ReadingPlanProvider } from '../lib/ReadingPlanContext';
 import { OnboardingProvider, useOnboarding } from '../lib/OnboardingContext';
+import { AuthProvider, useAuth } from '../lib/AuthContext';
+import { ChurchProvider } from '../lib/ChurchContext';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-function OnboardingGate() {
-  const { isComplete, isLoading } = useOnboarding();
+function AppGate() {
+  const { session, isLoading: authLoading } = useAuth();
+  const { isComplete, isLoading: onboardingLoading, userName } = useOnboarding();
   const segments = useSegments();
   const router = useRouter();
   const [ready, setReady] = useState(false);
 
+  const isLoading = authLoading || onboardingLoading;
+
   useEffect(() => {
     if (isLoading) return;
 
+    const inAuth = segments[0] === 'auth';
     const inOnboarding = segments[0] === 'onboarding';
+    const hasProfile = userName.trim().length > 0;
 
-    if (!isComplete && !inOnboarding) {
-      router.replace('/onboarding');
-    } else if (isComplete && inOnboarding) {
+    if (!session && !inAuth) {
+      // Not signed in — send to auth welcome
+      router.replace('/auth');
+    } else if (session && !hasProfile && !inOnboarding && !inAuth) {
+      // Signed in but no profile name — send to profile setup
+      router.replace('/onboarding/name');
+    } else if (session && hasProfile && (inAuth || (inOnboarding && isComplete))) {
+      // Signed in with profile — send to main app
       router.replace('/');
     } else {
       setReady(true);
     }
-  }, [isComplete, isLoading, segments]);
+  }, [session, isLoading, segments, userName, isComplete]);
 
   return (
-    <CompletionProvider>
-      <ReflectionProvider>
-        <ReadingPlanProvider>
-          <StatusBar style="dark" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: Colors.primary },
-            }}
-          />
-          {(!ready || isLoading) && (
-            <View style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color={Colors.accent} />
-            </View>
-          )}
-        </ReadingPlanProvider>
-      </ReflectionProvider>
-    </CompletionProvider>
+    <ChurchProvider>
+      <CompletionProvider>
+        <ReflectionProvider>
+          <ReadingPlanProvider>
+            <StatusBar style="dark" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: Colors.primary },
+              }}
+            />
+            {(!ready || isLoading) && (
+              <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color={Colors.accent} />
+              </View>
+            )}
+          </ReadingPlanProvider>
+        </ReflectionProvider>
+      </CompletionProvider>
+    </ChurchProvider>
   );
 }
 
@@ -97,9 +111,11 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <OnboardingProvider>
-        <OnboardingGate />
-      </OnboardingProvider>
+      <AuthProvider>
+        <OnboardingProvider>
+          <AppGate />
+        </OnboardingProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
