@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { StyleSheet, Text, View, FlatList } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,7 +18,6 @@ import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
 import { GradientCard } from '../../components/ui/GradientCard';
 import { NoiseOverlay } from '../../components/ui/NoiseOverlay';
 import { useFadeIn } from '../../hooks/useFadeIn';
-import { getPlanById } from '../../lib/readingPlanData';
 import { useReadingPlan } from '../../lib/ReadingPlanContext';
 import type { ReadingPlanDay } from '../../types';
 
@@ -29,7 +29,7 @@ interface DayRowProps {
   index: number;
 }
 
-const DayRow = ({ planId, planDay, isCurrent, isDone, index }: DayRowProps): JSX.Element => {
+const DayRow = React.memo(({ planId, planDay, isCurrent, isDone, index }: DayRowProps): JSX.Element => {
   const fadeStyle = useFadeIn(Config.animation.stagger.text * 4 + index * 60);
 
   return (
@@ -56,17 +56,21 @@ const DayRow = ({ planId, planDay, isCurrent, isDone, index }: DayRowProps): JSX
       </AnimatedPressable>
     </Animated.View>
   );
-};
+});
 
 export default function PlanOverviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const plan = getPlanById(id ?? '');
   const {
+    allPlans,
     isDayComplete,
     completedCount,
     currentDay: getCurrentDay,
+    isFollowing,
+    followPlan,
+    unfollowPlan,
   } = useReadingPlan();
+  const plan = allPlans.find((p) => p.id === id);
 
   const headerFade = useFadeIn(0);
   const titleFade = useFadeIn(Config.animation.stagger.text);
@@ -86,39 +90,68 @@ export default function PlanOverviewScreen() {
     opacity: glowOpacity.value,
   }));
 
-  if (!plan) {
+  const completed = plan ? completedCount(plan.id) : 0;
+  const current = plan ? getCurrentDay(plan.id, plan.totalDays) : 1;
+  const progress = plan ? completed / plan.totalDays : 0;
+  const currentPassage = plan?.days.find((d) => d.day === current)?.passage ?? '';
+
+  const renderItem = useCallback(({ item, index }: { item: ReadingPlanDay; index: number }) => {
+    if (!plan) return null;
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Text style={styles.errorText}>Plan not found</Text>
-      </View>
+      <DayRow
+        planId={plan.id}
+        planDay={item}
+        isCurrent={item.day === current}
+        isDone={isDayComplete(plan.id, item.day)}
+        index={index}
+      />
     );
-  }
+  }, [plan, current, isDayComplete]);
 
-  const completed = completedCount(plan.id);
-  const current = getCurrentDay(plan.id, plan.totalDays);
-  const progress = completed / plan.totalDays;
-  const currentPassage = plan.days.find((d) => d.day === current)?.passage ?? '';
+  const keyExtractor = useCallback((item: ReadingPlanDay) => String(item.day), []);
 
-  return (
-    <View style={styles.container}>
-      <NoiseOverlay />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 40 },
-        ]}
-      >
+  const ListHeader = useMemo(() => {
+    if (!plan) return null;
+    return (
+      <>
         {/* Header */}
         <Animated.View style={[styles.header, headerFade]}>
           <AnimatedPressable
             style={styles.backButton}
             onPress={() => router.back()}
+            accessibilityLabel="Go back"
           >
             <Feather name="arrow-left" size={22} color={Colors.textPrimary} />
           </AnimatedPressable>
-          <View style={styles.headerBadge}>
-            <Text style={styles.headerBadgeText}>READING PLAN</Text>
+          <View style={styles.headerRight}>
+            <View style={styles.headerBadge}>
+              <Text style={styles.headerBadgeText}>READING PLAN</Text>
+            </View>
+            <AnimatedPressable
+              style={[
+                styles.followButton,
+                isFollowing(plan.id) && styles.followButtonActive,
+              ]}
+              onPress={() =>
+                isFollowing(plan.id)
+                  ? unfollowPlan(plan.id)
+                  : followPlan(plan.id)
+              }
+            >
+              <Feather
+                name={isFollowing(plan.id) ? 'check' : 'plus'}
+                size={14}
+                color={isFollowing(plan.id) ? Colors.textDark : Colors.textAccent}
+              />
+              <Text
+                style={[
+                  styles.followButtonText,
+                  isFollowing(plan.id) && styles.followButtonTextActive,
+                ]}
+              >
+                {isFollowing(plan.id) ? 'Following' : 'Follow'}
+              </Text>
+            </AnimatedPressable>
           </View>
         </Animated.View>
 
@@ -161,21 +194,37 @@ export default function PlanOverviewScreen() {
           </AnimatedPressable>
         </Animated.View>
 
-        {/* Day List */}
-        <View style={styles.dayListSection}>
-          <Text style={styles.dayListLabel}>ALL DAYS</Text>
-          {plan.days.map((planDay, index) => (
-            <DayRow
-              key={planDay.day}
-              planId={plan.id}
-              planDay={planDay}
-              isCurrent={planDay.day === current}
-              isDone={isDayComplete(plan.id, planDay.day)}
-              index={index}
-            />
-          ))}
-        </View>
-      </ScrollView>
+        {/* Day List Label */}
+        <Text style={styles.dayListLabel}>ALL DAYS</Text>
+      </>
+    );
+  }, [plan, headerFade, titleFade, progressFade, ctaFade, glowStyle, isFollowing, followPlan, unfollowPlan, progress, completed, current, currentPassage]);
+
+  if (!plan) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <Text style={styles.errorText}>Plan not found</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <NoiseOverlay />
+      <FlatList
+        data={plan.days}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={ListHeader}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 40 },
+        ]}
+        initialNumToRender={15}
+        windowSize={5}
+        ItemSeparatorComponent={() => <View style={styles.daySeparator} />}
+      />
     </View>
   );
 }
@@ -212,6 +261,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   headerBadge: {
     backgroundColor: Colors.accentDim,
     paddingHorizontal: 10,
@@ -221,6 +275,28 @@ const styles = StyleSheet.create({
   headerBadgeText: {
     ...TypeScale.mono,
     color: Colors.textAccent,
+  },
+  followButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Config.radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.borderAccent,
+  },
+  followButtonActive: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
+  },
+  followButtonText: {
+    fontFamily: FontFamily.bodyMedium,
+    fontSize: 12,
+    color: Colors.textAccent,
+  },
+  followButtonTextActive: {
+    color: Colors.textDark,
   },
 
   // Title
@@ -305,13 +381,13 @@ const styles = StyleSheet.create({
   },
 
   // Day list
-  dayListSection: {
-    gap: 10,
-  },
   dayListLabel: {
     ...TypeScale.mono,
     color: Colors.textAccent,
-    marginBottom: 6,
+    marginBottom: 10,
+  },
+  daySeparator: {
+    height: 10,
   },
   dayCard: {
     flexDirection: 'row',

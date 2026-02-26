@@ -16,7 +16,7 @@ import { useFadeIn } from '../../hooks/useFadeIn';
 import { useCompletions } from '../../lib/CompletionContext';
 import { useDevotionals } from '../../hooks/useDevotionals';
 import { useChurch } from '../../hooks/useChurch';
-import { readingPlan } from '../../lib/readingPlanData';
+import { useReadingPlan } from '../../lib/ReadingPlanContext';
 
 const getGreeting = (): string => {
   const hour = new Date().getHours();
@@ -37,6 +37,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { isComplete, completedIds } = useCompletions();
   const { church, isLoading: churchLoading } = useChurch();
+  const { userPlans } = useReadingPlan();
   const churchId = churchLoading ? undefined : church?.id ?? null;
   const { todayDevotional, recentDevotionals, isLoading } = useDevotionals(churchId);
   const headerFade = useFadeIn(0);
@@ -56,7 +57,7 @@ export default function HomeScreen() {
         {/* Header */}
         <Animated.View style={[styles.header, headerFade]}>
           <Text style={styles.date}>{getFormattedDate()}</Text>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
+          <Text style={styles.greeting} accessibilityRole="header">{getGreeting()}</Text>
           <View style={styles.accentLine} />
         </Animated.View>
 
@@ -89,9 +90,28 @@ export default function HomeScreen() {
               </View>
             )}
 
-            {/* Reading Progress */}
+            {/* Reading Plans */}
+            {userPlans.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeadingRow}>
+                  <Feather name="map" size={18} color={Colors.textAccent} />
+                  <Text style={styles.sectionHeading}>Your Reading Plans</Text>
+                </View>
+              </View>
+            )}
+            {userPlans.map((plan, i) => (
+              <View key={plan.id} style={userPlans.length > 0 ? styles.planCardSpacing : styles.section}>
+                <ReadingProgress plan={plan} index={3 + i} />
+              </View>
+            ))}
             <View style={styles.section}>
-              <ReadingProgress plan={readingPlan} index={3} />
+              <AnimatedPressable onPress={() => router.push('/plans')}>
+                <GradientCard style={styles.planCta}>
+                  <Feather name="map" size={20} color={Colors.textAccent} />
+                  <Text style={styles.planCtaText}>Browse Reading Plans</Text>
+                  <Feather name="chevron-right" size={18} color={Colors.textMuted} />
+                </GradientCard>
+              </AnimatedPressable>
             </View>
           </>
         )}
@@ -134,6 +154,20 @@ const styles = StyleSheet.create({
   section: {
     marginTop: Config.spacing.sectionGap,
   },
+  sectionHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sectionHeading: {
+    fontSize: 20,
+    lineHeight: 24,
+    fontFamily: FontFamily.headingSemiBold,
+    color: Colors.textPrimary,
+  },
+  planCardSpacing: {
+    marginTop: 12,
+  },
   emptyState: {
     alignItems: 'center',
     marginTop: 60,
@@ -160,6 +194,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   emptyCtaText: {
+    fontFamily: FontFamily.headingSemiBold,
+    fontSize: 16,
+    color: Colors.textAccent,
+  },
+  planCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+  },
+  planCtaText: {
+    flex: 1,
     fontFamily: FontFamily.headingSemiBold,
     fontSize: 16,
     color: Colors.textAccent,

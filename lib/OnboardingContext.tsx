@@ -11,6 +11,7 @@ import type { OnboardingStore, UserRole } from '../types';
 import * as storage from './onboardingStorage';
 import { supabase } from './supabase';
 import { useAuth } from './AuthContext';
+import { logger } from './logger';
 
 interface OnboardingContextValue {
   isComplete: boolean;
@@ -87,7 +88,7 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
                 .update({ user_name: local.userName, updated_at: new Date().toISOString() })
                 .eq('id', user.id)
                 .then(({ error: syncErr }) => {
-                  if (syncErr) console.warn('[OnboardingContext] Failed to sync user_name to Supabase:', syncErr.message);
+                  if (syncErr) logger.warn('[OnboardingContext] Failed to sync user_name to Supabase:', syncErr.message);
                 });
             }
 
@@ -111,7 +112,7 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
     async (name: string) => {
       const trimmed = name.trim();
       if (trimmed.length === 0) {
-        console.warn('[OnboardingContext] setUserName called with empty name, ignoring');
+        logger.warn('[OnboardingContext] setUserName called with empty name, ignoring');
         return;
       }
 
@@ -129,12 +130,12 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
           .eq('id', user.id);
 
         if (error) {
-          console.warn('[OnboardingContext] Failed to persist user_name:', error.message);
+          logger.warn('[OnboardingContext] Failed to persist user_name:', error.message);
         } else {
-          console.log('[OnboardingContext] user_name persisted to Supabase for', user.id.slice(0, 8));
+          logger.debug('[OnboardingContext] user_name persisted to Supabase for', user.id.slice(0, 8));
         }
       } else {
-        console.warn('[OnboardingContext] setUserName called but user is null — name only saved locally');
+        logger.warn('[OnboardingContext] setUserName called but user is null — name only saved locally');
       }
     },
     [user]
@@ -155,7 +156,7 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
           .update({ church_code: code, updated_at: new Date().toISOString() })
           .eq('id', user.id)
           .then(({ error }) => {
-            if (error) console.warn('[OnboardingContext] Failed to sync church_code:', error.message);
+            if (error) logger.warn('[OnboardingContext] Failed to sync church_code:', error.message);
           });
       }
     },

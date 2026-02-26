@@ -5,6 +5,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -37,7 +38,7 @@ const formatDate = (dateStr: string): string => {
 export default function DevotionalDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { devotional, isLoading: devotionalLoading } = useDevotional(id);
+  const { devotional, isLoading: devotionalLoading, error: devotionalError, refetch } = useDevotional(id);
   const { isComplete: checkComplete, toggleComplete } = useCompletions();
   const { shareToggledAnswers } = useReflections();
   const { userName, initials, churchCode } = useOnboarding();
@@ -69,10 +70,35 @@ export default function DevotionalDetailScreen() {
   const prayerFade = useFadeIn(Config.animation.stagger.text * 5);
   const footerFade = useFadeIn(Config.animation.stagger.text * 6);
 
+  if (devotionalLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color={Colors.accent} />
+      </View>
+    );
+  }
+
+  if (devotionalError) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <NoiseOverlay />
+        <View style={styles.errorContainer}>
+          <Feather name="alert-circle" size={40} color={Colors.textMuted} />
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorBody}>{devotionalError}</Text>
+          <AnimatedPressable style={styles.retryButton} onPress={refetch}>
+            <Feather name="refresh-cw" size={16} color={Colors.textAccent} />
+            <Text style={styles.retryText}>Retry</Text>
+          </AnimatedPressable>
+        </View>
+      </View>
+    );
+  }
+
   if (!devotional) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Text style={styles.errorText}>Devotional not found</Text>
+        <Text style={styles.notFoundText}>Devotional not found</Text>
       </View>
     );
   }
@@ -97,6 +123,7 @@ export default function DevotionalDetailScreen() {
           <AnimatedPressable
             style={styles.backButton}
             onPress={() => router.back()}
+            accessibilityLabel="Go back"
           >
             <Feather name="arrow-left" size={22} color={Colors.textPrimary} />
           </AnimatedPressable>
@@ -195,11 +222,46 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: Config.spacing.screenHorizontal,
   },
-  errorText: {
+  centerContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notFoundText: {
     ...TypeScale.body,
     color: Colors.textMuted,
     textAlign: 'center',
     marginTop: 100,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    marginTop: 100,
+    gap: 12,
+    paddingHorizontal: 32,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontFamily: FontFamily.headingSemiBold,
+    color: Colors.textPrimary,
+  },
+  errorBody: {
+    ...TypeScale.body,
+    color: Colors.textMuted,
+    textAlign: 'center',
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: Config.radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.borderAccent,
+    marginTop: 8,
+  },
+  retryText: {
+    ...TypeScale.mono,
+    color: Colors.textAccent,
   },
 
   // Header

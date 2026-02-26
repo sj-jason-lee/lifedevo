@@ -37,6 +37,7 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -50,11 +51,25 @@ export default function SignUpScreen() {
   const ctaFade = useFadeIn(Config.animation.stagger.text * 3);
   const socialFade = useFadeIn(Config.animation.stagger.text * 4);
 
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const validateEmail = (value: string): boolean => {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) return true;
+    if (!EMAIL_REGEX.test(trimmed)) {
+      setEmailError('Invalid email format');
+      return false;
+    }
+    setEmailError('');
+    return true;
+  };
+
   const canSubmit =
     email.trim().length > 0 &&
     password.length >= 6 &&
     password === confirmPassword &&
-    !loading;
+    !loading &&
+    !emailError;
 
   const emailBorder = useAnimatedStyle(() => ({
     borderColor: interpolateColor(emailFocus.value, [0, 1], [Colors.border, Colors.accent]),
@@ -69,6 +84,7 @@ export default function SignUpScreen() {
   }));
 
   const handleSignUp = async () => {
+    if (!validateEmail(email)) return;
     if (!canSubmit) return;
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -137,9 +153,9 @@ export default function SignUpScreen() {
               <TextInput
                 style={styles.input}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => { setEmail(v); setEmailError(''); }}
                 onFocus={() => { emailFocus.value = withTiming(1, { duration: 250 }); }}
-                onBlur={() => { emailFocus.value = withTiming(0, { duration: 250 }); }}
+                onBlur={() => { emailFocus.value = withTiming(0, { duration: 250 }); validateEmail(email); }}
                 placeholder="Email"
                 placeholderTextColor={Colors.textMuted}
                 autoCapitalize="none"
@@ -149,6 +165,7 @@ export default function SignUpScreen() {
                 returnKeyType="next"
               />
             </AnimatedView>
+            {emailError !== '' && <Text style={styles.fieldError}>{emailError}</Text>}
 
             <AnimatedView style={[styles.inputWrapper, styles.inputSpacing, passwordBorder]}>
               <View style={styles.passwordRow}>
@@ -158,7 +175,7 @@ export default function SignUpScreen() {
                   onChangeText={setPassword}
                   onFocus={() => { passwordFocus.value = withTiming(1, { duration: 250 }); }}
                   onBlur={() => { passwordFocus.value = withTiming(0, { duration: 250 }); }}
-                  placeholder="Password (min 6 characters)"
+                  placeholder="Password"
                   placeholderTextColor={Colors.textMuted}
                   secureTextEntry={!showPassword}
                   textContentType="newPassword"
@@ -177,6 +194,7 @@ export default function SignUpScreen() {
                 </Pressable>
               </View>
             </AnimatedView>
+            <Text style={styles.passwordHint}>Must be at least 6 characters</Text>
 
             <AnimatedView style={[styles.inputWrapper, styles.inputSpacing, confirmBorder]}>
               <TextInput
@@ -328,9 +346,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 18,
   },
+  fieldError: {
+    ...TypeScale.caption,
+    color: '#E63B2E',
+    marginTop: 6,
+  },
+  passwordHint: {
+    ...TypeScale.caption,
+    color: Colors.textMuted,
+    marginTop: 6,
+    marginLeft: 4,
+  },
   errorText: {
     ...TypeScale.caption,
-    color: Colors.accent,
+    color: '#E63B2E',
     marginTop: 12,
   },
 

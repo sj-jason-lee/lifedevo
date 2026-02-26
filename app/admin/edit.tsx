@@ -14,6 +14,7 @@ import Animated from 'react-native-reanimated';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, TypeScale } from '../../constants/typography';
@@ -26,14 +27,10 @@ import { useAuth } from '../../lib/AuthContext';
 import { useOnboarding } from '../../lib/OnboardingContext';
 import { useChurch } from '../../hooks/useChurch';
 import { supabase } from '../../lib/supabase';
+import { estimateReadTime, validateDevotional } from '../../lib/devotionalValidation';
 import type { DevotionalRow, DevotionalStatus } from '../../types';
 
 const STATUS_OPTIONS: DevotionalStatus[] = ['draft', 'scheduled', 'published'];
-
-const estimateReadTime = (text: string): number => {
-  const words = text.trim().split(/\s+/).length;
-  return Math.max(1, Math.round(words / 200));
-};
 
 export default function EditDevotionalScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -54,7 +51,13 @@ export default function EditDevotionalScreen() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [readTimeMinutes, setReadTimeMinutes] = useState(5);
   const [status, setStatus] = useState<DevotionalStatus>('draft');
-  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledDateObj, setScheduledDateObj] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(d.getHours() + 1, 0, 0, 0);
+    return d;
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingEdit, setIsLoadingEdit] = useState(isEditing);
@@ -84,7 +87,9 @@ export default function EditDevotionalScreen() {
           setDate(row.date);
           setReadTimeMinutes(row.read_time_minutes);
           setStatus(row.status);
-          setScheduledDate(row.scheduled_date ?? '');
+          if (row.scheduled_date) {
+            setScheduledDateObj(new Date(row.scheduled_date));
+          }
         }
         setIsLoadingEdit(false);
       });
@@ -114,16 +119,18 @@ export default function EditDevotionalScreen() {
   const validate = (): string | null => {
     if (!isEditing && !church) return 'You must be part of a church to create devotionals';
     if (!isEditing && !isLeader) return 'Only church leaders can create devotionals';
-    if (!title.trim()) return 'Title is required';
-    if (!scripture.trim()) return 'Scripture reference is required';
-    if (!scriptureText.trim()) return 'Scripture text is required';
-    if (!body.trim()) return 'Devotional body is required';
-    if (!prayer.trim()) return 'Prayer is required';
-    const validQuestions = reflectQuestions.filter((q) => q.trim());
-    if (validQuestions.length === 0) return 'At least one reflection question is required';
-    if (!date.match(/^\d{4}-\d{2}-\d{2}$/)) return 'Date must be YYYY-MM-DD format';
-    if (status === 'scheduled' && !scheduledDate.trim()) return 'Scheduled date is required for scheduled status';
-    return null;
+    const errors = validateDevotional({
+      title,
+      scripture,
+      scripture_text: scriptureText,
+      body,
+      reflect_questions: reflectQuestions,
+      prayer,
+      date,
+      status,
+      scheduled_date: status === 'scheduled' ? scheduledDateObj.toISOString() : null,
+    });
+    return errors.length > 0 ? errors[0] : null;
   };
 
   const handleSave = useCallback(
@@ -150,7 +157,7 @@ export default function EditDevotionalScreen() {
         author_name: authorName.trim() || userName,
         author_id: user?.id,
         status: saveStatus,
-        scheduled_date: saveStatus === 'scheduled' ? scheduledDate || null : null,
+        scheduled_date: saveStatus === 'scheduled' ? scheduledDateObj.toISOString() : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -172,7 +179,7 @@ export default function EditDevotionalScreen() {
         router.back();
       }
     },
-    [title, scripture, scriptureText, body, reflectQuestions, prayer, date, readTimeMinutes, authorName, status, scheduledDate, user, id, isEditing, userName]
+    [title, scripture, scriptureText, body, reflectQuestions, prayer, date, readTimeMinutes, authorName, status, scheduledDateObj, user, id, isEditing, userName]
   );
 
   if (isLoadingEdit) {
@@ -386,14 +393,57 @@ export default function EditDevotionalScreen() {
           {/* Scheduled Date (conditional) */}
           {status === 'scheduled' && (
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>SCHEDULED DATE</Text>
-              <TextInput
-                style={styles.input}
-                value={scheduledDate}
-                onChangeText={setScheduledDate}
-                placeholder="YYYY-MM-DD HH:MM"
-                placeholderTextColor={Colors.textMuted}
-              />
+              <Text style={styles.fieldLabel}>SCHEDULED DATE & TIME</Text>
+              <View style={styles.pickerRow}>
+                <AnimatedPressable
+                  style={styles.pickerButton}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Feather name="calendar" size={16} color={Colors.textAccent} />
+                  <Text style={styles.pickerButtonText}>
+                    {scheduledDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </Text>
+                </AnimatedPressable>
+                <AnimatedPressable
+                  style={styles.pickerButton}
+                  onPress={() => setShowTimePicker(true)}
+                >
+                  <Feather name="clock" size={16} color={Colors.textAccent} />
+                  <Text style={styles.pickerButtonText}>
+                    {scheduledDateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                  </Text>
+                </AnimatedPressable>
+              </View>
+              <Text style={styles.fieldHint}>Auto-publishes at the scheduled time</Text>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={scheduledDateObj}
+                  mode="date"
+                  minimumDate={new Date()}
+                  onChange={(event: DateTimePickerEvent, selected?: Date) => {
+                    setShowDatePicker(Platform.OS === 'ios');
+                    if (selected) {
+                      const updated = new Date(scheduledDateObj);
+                      updated.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+                      setScheduledDateObj(updated);
+                    }
+                  }}
+                />
+              )}
+              {showTimePicker && (
+                <DateTimePicker
+                  value={scheduledDateObj}
+                  mode="time"
+                  onChange={(event: DateTimePickerEvent, selected?: Date) => {
+                    setShowTimePicker(Platform.OS === 'ios');
+                    if (selected) {
+                      const updated = new Date(scheduledDateObj);
+                      updated.setHours(selected.getHours(), selected.getMinutes());
+                      setScheduledDateObj(updated);
+                    }
+                  }}
+                />
+              )}
             </View>
           )}
 
@@ -668,6 +718,30 @@ const styles = StyleSheet.create({
   },
   statusOptionTextActive: {
     color: Colors.textAccent,
+  },
+
+  // Picker
+  pickerRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 4,
+  },
+  pickerButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: Config.radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.borderAccent,
+    backgroundColor: Colors.surfaceCard,
+  },
+  pickerButtonText: {
+    fontFamily: FontFamily.headingSemiBold,
+    fontSize: 15,
+    color: Colors.textPrimary,
   },
 
   // Actions

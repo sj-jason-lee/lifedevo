@@ -1,3 +1,4 @@
+import React from 'react';
 import { StyleSheet, Text, View, FlatList, Alert, ActivityIndicator } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,7 +12,7 @@ import { NoiseOverlay } from '../../components/ui/NoiseOverlay';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { useChurch } from '../../hooks/useChurch';
 import { useAuth } from '../../lib/AuthContext';
-import type { ChurchMember } from '../../types';
+import type { ChurchMember, ChurchRole } from '../../types';
 
 interface MemberRowProps {
   member: ChurchMember;
@@ -19,9 +20,10 @@ interface MemberRowProps {
   isLeader: boolean;
   isCurrentUser: boolean;
   onRemove: (userId: string, name: string) => void;
+  onRoleToggle: (userId: string, name: string, currentRole: ChurchRole) => void;
 }
 
-const MemberRow = ({ member, index, isLeader, isCurrentUser, onRemove }: MemberRowProps) => {
+const MemberRow = React.memo(({ member, index, isLeader, isCurrentUser, onRemove, onRoleToggle }: MemberRowProps) => {
   const fadeStyle = useFadeIn(Config.animation.stagger.card * (index + 2));
 
   return (
@@ -42,22 +44,38 @@ const MemberRow = ({ member, index, isLeader, isCurrentUser, onRemove }: MemberR
           )}
         </View>
       </View>
-      {isLeader && !isCurrentUser && member.churchRole !== 'leader' && (
-        <AnimatedPressable
-          onPress={() => onRemove(member.userId, member.userName)}
-          style={styles.removeButton}
-        >
-          <Feather name="x" size={16} color="#C0392B" />
-        </AnimatedPressable>
+      {isLeader && !isCurrentUser && (
+        <View style={styles.rowActions}>
+          <AnimatedPressable
+            onPress={() => onRoleToggle(member.userId, member.userName, member.churchRole)}
+            style={styles.roleButton}
+            accessibilityLabel={member.churchRole === 'leader' ? `Demote ${member.userName}` : `Promote ${member.userName}`}
+          >
+            <Feather
+              name={member.churchRole === 'leader' ? 'arrow-down-circle' : 'arrow-up-circle'}
+              size={18}
+              color={member.churchRole === 'leader' ? Colors.textMuted : Colors.accent}
+            />
+          </AnimatedPressable>
+          {member.churchRole !== 'leader' && (
+            <AnimatedPressable
+              onPress={() => onRemove(member.userId, member.userName)}
+              style={styles.removeButton}
+              accessibilityLabel="Remove member"
+            >
+              <Feather name="x" size={16} color="#C0392B" />
+            </AnimatedPressable>
+          )}
+        </View>
       )}
     </Animated.View>
   );
-};
+});
 
 export default function MembersScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { church, members, memberCount, isLeader, isLoading, removeMember } = useChurch();
+  const { church, members, memberCount, isLeader, isLoading, removeMember, updateMemberRole } = useChurch();
 
   const headerFade = useFadeIn(0);
   const countFade = useFadeIn(Config.animation.stagger.card);
@@ -73,6 +91,30 @@ export default function MembersScreen() {
           style: 'destructive',
           onPress: async () => {
             const { error } = await removeMember(userId);
+            if (error) Alert.alert('Error', error);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRoleToggle = (userId: string, name: string, currentRole: ChurchRole) => {
+    const isPromoting = currentRole === 'member';
+    const action = isPromoting ? 'Promote' : 'Demote';
+    const newRole: ChurchRole = isPromoting ? 'leader' : 'member';
+    const description = isPromoting
+      ? `Make ${name} a leader? They'll be able to manage members and devotionals.`
+      : `Remove leader role from ${name}? They'll become a regular member.`;
+
+    Alert.alert(
+      `${action} ${name}`,
+      description,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: action,
+          onPress: async () => {
+            const { error } = await updateMemberRole(userId, newRole);
             if (error) Alert.alert('Error', error);
           },
         },
@@ -103,6 +145,7 @@ export default function MembersScreen() {
       isLeader={isLeader}
       isCurrentUser={item.userId === user?.id}
       onRemove={handleRemove}
+      onRoleToggle={handleRoleToggle}
     />
   );
 
@@ -112,7 +155,7 @@ export default function MembersScreen() {
       <View style={{ paddingTop: insets.top + 16, flex: 1 }}>
         {/* Header */}
         <Animated.View style={[styles.header, headerFade]}>
-          <AnimatedPressable onPress={() => router.back()} style={styles.backButton}>
+          <AnimatedPressable onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Go back">
             <Feather name="arrow-left" size={20} color={Colors.textPrimary} />
           </AnimatedPressable>
           <Text style={styles.monoLabel}>MEMBERS</Text>
@@ -250,9 +293,16 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     color: Colors.accent,
   },
+  rowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  roleButton: {
+    padding: 8,
+  },
   removeButton: {
     padding: 8,
-    marginLeft: 8,
   },
   emptyText: {
     ...TypeScale.body,

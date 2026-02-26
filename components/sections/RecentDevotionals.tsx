@@ -30,7 +30,10 @@ export const RecentDevotionals = ({
 
   return (
     <Animated.View style={[fadeStyle, styles.container]}>
-      <Text style={styles.sectionTitle}>Recent</Text>
+      <View style={styles.sectionTitleRow}>
+        <Feather name="heart" size={18} color={Colors.textAccent} />
+        <Text style={styles.sectionTitle}>Recent Devotionals</Text>
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -68,13 +71,18 @@ const styles = StyleSheet.create({
   container: {
     marginHorizontal: -Config.spacing.screenHorizontal,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+    paddingHorizontal: Config.spacing.screenHorizontal,
+  },
   sectionTitle: {
     fontSize: 20,
     lineHeight: 24,
     fontFamily: FontFamily.headingSemiBold,
     color: Colors.textPrimary,
-    marginBottom: 16,
-    paddingHorizontal: Config.spacing.screenHorizontal,
   },
   scrollContent: {
     paddingHorizontal: Config.spacing.screenHorizontal,

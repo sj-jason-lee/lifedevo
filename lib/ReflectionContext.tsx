@@ -56,7 +56,6 @@ export const ReflectionProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [store, setStore] = useState<ReflectionsStore>({
     answers: {},
-    sharedIds: [],
   });
   const [communityFeed, setCommunityFeed] = useState<SharedReflection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,7 +70,7 @@ export const ReflectionProvider = ({ children }: { children: ReactNode }) => {
   // Hydrate answers from Supabase when user changes
   useEffect(() => {
     if (!user) {
-      setStore({ answers: {}, sharedIds: [] });
+      setStore({ answers: {} });
       setIsLoading(false);
       return;
     }
@@ -83,50 +82,30 @@ export const ReflectionProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [user?.id]);
 
-  // Fetch community reflections from Supabase
+  // Fetch community reflections from user_answers (shared_at IS NOT NULL)
   useEffect(() => {
     if (!user) {
       setCommunityFeed([]);
       return;
     }
 
-    const fetchCommunity = async () => {
-      const { data, error } = await supabase
-        .from('shared_reflections')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        const mapped: SharedReflection[] = data.map((row: any) => ({
-          id: row.id,
-          devotionalId: row.devotional_id,
-          devotionalTitle: row.devotional_title,
-          scripture: row.scripture,
-          questionIndex: row.question_index,
-          questionText: row.question_text,
-          answerText: row.answer_text,
-          authorName: row.author_name,
-          authorInitials: row.author_initials,
-          sharedAt: row.created_at,
-          isCurrentUser: row.user_id === user.id,
-          churchCode: row.church_code,
-          userId: row.user_id,
-        }));
-        setCommunityFeed(mapped);
-      }
+    const fetchCommunity = () => {
+      storage.loadCommunityFeed(user.id).then(setCommunityFeed);
     };
 
     fetchCommunity();
 
-    // Subscribe to realtime inserts/updates
+    // Subscribe to realtime changes on user_answers
     const channel = supabase
-      .channel('shared_reflections_changes')
+      .channel('user_answers_shared_changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'shared_reflections' },
-        () => {
-          // Re-fetch on any change
-          fetchCommunity();
+        { event: '*', schema: 'public', table: 'user_answers' },
+        (payload: any) => {
+          // Only re-fetch when shared_at is involved (avoids noise from normal typing)
+          if (payload.new?.shared_at || payload.old?.shared_at) {
+            fetchCommunity();
+          }
         }
       )
       .subscribe();
@@ -154,6 +133,7 @@ export const ReflectionProvider = ({ children }: { children: ReactNode }) => {
           devotionalId,
           answers: {},
           shareFlags: {},
+          sharedAt: {},
           lastModified: new Date().toISOString(),
         };
         return {
@@ -198,54 +178,73 @@ export const ReflectionProvider = ({ children }: { children: ReactNode }) => {
   const shareReflection = useCallback(
     (reflection: Omit<SharedReflection, 'id' | 'isCurrentUser' | 'sharedAt'>) => {
       const localId = `user-${reflection.devotionalId}-${reflection.questionIndex}`;
+      const now = new Date().toISOString();
 
-      // Optimistic local update
+      // Optimistic community feed update
       const shared: SharedReflection = {
         ...reflection,
         id: localId,
         isCurrentUser: true,
-        sharedAt: new Date().toISOString(),
+        sharedAt: now,
       };
       setCommunityFeed((prev) => [shared, ...prev.filter((r) => r.id !== localId)]);
 
-      // Upsert to Supabase
-      if (user) {
-        supabase
-          .from('shared_reflections')
-          .upsert(
-            {
-              user_id: user.id,
-              devotional_id: reflection.devotionalId,
-              devotional_title: reflection.devotionalTitle,
-              scripture: reflection.scripture,
-              question_index: reflection.questionIndex,
-              question_text: reflection.questionText,
-              answer_text: reflection.answerText,
-              author_name: reflection.authorName,
-              author_initials: reflection.authorInitials,
-              church_code: reflection.churchCode,
+      // Optimistic sharedAt update in store
+      setStore((prev) => {
+        const existing = prev.answers[reflection.devotionalId] ?? {
+          devotionalId: reflection.devotionalId,
+          answers: {},
+          shareFlags: {},
+          sharedAt: {},
+          lastModified: now,
+        };
+        return {
+          ...prev,
+          answers: {
+            ...prev.answers,
+            [reflection.devotionalId]: {
+              ...existing,
+              sharedAt: { ...existing.sharedAt, [reflection.questionIndex]: now },
             },
-            { onConflict: 'user_id,devotional_id,question_index' }
-          )
-          .then(({ error }) => {
-            if (error) console.warn('Failed to upsert reflection:', error.message);
-          });
+          },
+        };
+      });
+
+      // Cancel pending debounce timer for this answer to avoid stale overwrite race
+      if (user) {
+        const debounceKey = `${reflection.devotionalId}-${reflection.questionIndex}`;
+        const pendingTimer = debounceTimers.current.get(debounceKey);
+        if (pendingTimer) {
+          clearTimeout(pendingTimer);
+          debounceTimers.current.delete(debounceKey);
+        }
+
+        storage.shareAnswer(
+          user.id,
+          reflection.devotionalId,
+          reflection.questionIndex,
+          reflection.answerText,
+          true,
+          {
+            devotionalTitle: reflection.devotionalTitle,
+            scripture: reflection.scripture,
+            questionText: reflection.questionText,
+            authorName: reflection.authorName,
+            authorInitials: reflection.authorInitials,
+            churchCode: reflection.churchCode,
+          }
+        );
       }
     },
     [user]
   );
 
-  // Derive "is shared" from communityFeed instead of local sharedIds
+  // Check if an answer is shared using local store (single source of truth)
   const isShared = useCallback(
     (devotionalId: string, questionIndex: number): boolean => {
-      return communityFeed.some(
-        (r) =>
-          r.isCurrentUser &&
-          r.devotionalId === devotionalId &&
-          r.questionIndex === questionIndex
-      );
+      return store.answers[devotionalId]?.sharedAt?.[questionIndex] != null;
     },
-    [communityFeed]
+    [store.answers]
   );
 
   const setShareFlag = useCallback(
@@ -256,6 +255,7 @@ export const ReflectionProvider = ({ children }: { children: ReactNode }) => {
           devotionalId,
           answers: {},
           shareFlags: {},
+          sharedAt: {},
           lastModified: new Date().toISOString(),
         };
         return {

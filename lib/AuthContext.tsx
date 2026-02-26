@@ -10,6 +10,7 @@ import { supabase } from './supabase';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import type { Session, User } from '@supabase/supabase-js';
+import { logger } from './logger';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -80,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signInWithGoogle = useCallback(async (): Promise<{ error: string | null }> => {
     try {
       const redirectTo = makeRedirectUri({ scheme: 'pasture', path: 'auth/callback' });
-      console.log('[OAuth] redirectTo:', redirectTo);
+      logger.debug('[OAuth] redirectTo:', redirectTo);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -88,16 +89,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (error) {
-        console.log('[OAuth] signInWithOAuth error:', error.message);
+        logger.debug('[OAuth] signInWithOAuth error:', error.message);
         return { error: error.message };
       }
 
-      console.log('[OAuth] authorize URL:', data.url);
+      logger.debug('[OAuth] authorize URL:', data.url);
 
       if (!data.url) return { error: 'No OAuth URL returned' };
 
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-      console.log('[OAuth] browser result:', result.type, 'url' in result ? result.url : 'N/A');
+      logger.debug('[OAuth] browser result:', result.type, 'url' in result ? result.url : 'N/A');
 
       if (result.type !== 'success' || !('url' in result)) {
         return { error: null }; // user cancelled/dismissed
@@ -122,7 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      console.log('[OAuth] tokens found:', !!accessToken, !!refreshToken);
+      logger.debug('[OAuth] tokens found:', !!accessToken, !!refreshToken);
 
       if (accessToken && refreshToken) {
         const { error: sessionError } = await supabase.auth.setSession({
@@ -136,7 +137,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       return { error: null };
     } catch (e: any) {
-      console.log('[OAuth] unexpected error:', e.message);
+      logger.debug('[OAuth] unexpected error:', e.message);
       return { error: e.message ?? 'An unexpected error occurred.' };
     }
   }, []);

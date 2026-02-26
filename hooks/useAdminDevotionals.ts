@@ -10,6 +10,7 @@ export const useAdminDevotionals = (churchId?: string | null) => {
   const { role } = useOnboarding();
   const [devotionals, setDevotionals] = useState<DevotionalRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<DevotionalStatus | 'all'>('all');
 
   const fetchDevotionals = useCallback(async () => {
@@ -26,6 +27,7 @@ export const useAdminDevotionals = (churchId?: string | null) => {
     }
 
     setIsLoading(true);
+    setError(null);
 
     let query = supabase
       .from('devotionals')
@@ -42,8 +44,10 @@ export const useAdminDevotionals = (churchId?: string | null) => {
       query = query.eq('status', filter);
     }
 
-    const { data, error } = await query;
-    if (!error) {
+    const { data, error: fetchError } = await query;
+    if (fetchError) {
+      setError(fetchError.message);
+    } else {
       setDevotionals((data ?? []) as DevotionalRow[]);
     }
     setIsLoading(false);
@@ -64,8 +68,12 @@ export const useAdminDevotionals = (churchId?: string | null) => {
             text: 'Delete',
             style: 'destructive',
             onPress: async () => {
-              await supabase.from('devotionals').delete().eq('id', id);
-              fetchDevotionals();
+              const { error: deleteError } = await supabase.from('devotionals').delete().eq('id', id);
+              if (deleteError) {
+                Alert.alert('Error', `Failed to delete: ${deleteError.message}`);
+              } else {
+                fetchDevotionals();
+              }
             },
           },
         ]
@@ -76,11 +84,15 @@ export const useAdminDevotionals = (churchId?: string | null) => {
 
   const updateStatus = useCallback(
     async (id: string, status: DevotionalStatus) => {
-      await supabase
+      const { error: updateError } = await supabase
         .from('devotionals')
         .update({ status, updated_at: new Date().toISOString() })
         .eq('id', id);
-      fetchDevotionals();
+      if (updateError) {
+        Alert.alert('Error', `Failed to update status: ${updateError.message}`);
+      } else {
+        fetchDevotionals();
+      }
     },
     [fetchDevotionals]
   );
@@ -88,6 +100,7 @@ export const useAdminDevotionals = (churchId?: string | null) => {
   return {
     devotionals,
     isLoading,
+    error,
     filter,
     setFilter,
     refetch: fetchDevotionals,

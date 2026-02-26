@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { router } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { TypeScale, FontFamily } from '../../constants/typography';
 import { Config } from '../../constants/config';
@@ -25,7 +26,10 @@ export const ReadingProgress = ({ plan, index }: ReadingProgressProps): JSX.Elem
   return (
     <Animated.View style={fadeStyle}>
       <GradientCard>
-        <Text style={styles.label}>READING PLAN</Text>
+        <View style={styles.labelRow}>
+          <Feather name="map" size={12} color={Colors.textAccent} />
+          <Text style={styles.label}>READING PLAN</Text>
+        </View>
         <Text style={styles.planName}>{plan.name}</Text>
         <Text style={styles.description}>{plan.description}</Text>
 
@@ -51,10 +55,15 @@ export const ReadingProgress = ({ plan, index }: ReadingProgressProps): JSX.Elem
 };
 
 const styles = StyleSheet.create({
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
   label: {
     ...TypeScale.mono,
     color: Colors.textAccent,
-    marginBottom: 12,
   },
   planName: {
     fontSize: 22,

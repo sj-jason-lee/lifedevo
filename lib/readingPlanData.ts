@@ -1,39 +1,84 @@
+import { supabase } from './supabase';
 import type { ReadingPlan, ReadingPlanDay } from '../types';
+import { logger } from './logger';
 
-export const readingPlan: ReadingPlan = {
-  id: '1',
-  name: 'Gospel of John',
-  totalDays: 21,
-  description: 'A 21-day journey through the Gospel of John',
-  days: [
-    { day: 1, passage: 'John 1' },
-    { day: 2, passage: 'John 2' },
-    { day: 3, passage: 'John 3' },
-    { day: 4, passage: 'John 4' },
-    { day: 5, passage: 'John 5' },
-    { day: 6, passage: 'John 6:1–40' },
-    { day: 7, passage: 'John 6:41–71' },
-    { day: 8, passage: 'John 7' },
-    { day: 9, passage: 'John 8' },
-    { day: 10, passage: 'John 9' },
-    { day: 11, passage: 'John 10' },
-    { day: 12, passage: 'John 11' },
-    { day: 13, passage: 'John 12' },
-    { day: 14, passage: 'John 13' },
-    { day: 15, passage: 'John 14' },
-    { day: 16, passage: 'John 15' },
-    { day: 17, passage: 'John 16' },
-    { day: 18, passage: 'John 17' },
-    { day: 19, passage: 'John 18' },
-    { day: 20, passage: 'John 19' },
-    { day: 21, passage: 'John 20–21' },
-  ],
+interface ReadingPlanRow {
+  id: string;
+  name: string;
+  description: string;
+  total_days: number;
+  days: ReadingPlanDay[];
+}
+
+const toReadingPlan = (row: ReadingPlanRow): ReadingPlan => ({
+  id: row.id,
+  name: row.name,
+  description: row.description,
+  totalDays: row.total_days,
+  days: row.days,
+});
+
+export const getAllPlans = async (): Promise<ReadingPlan[]> => {
+  const { data, error } = await supabase
+    .from('reading_plans')
+    .select('*')
+    .order('total_days');
+
+  if (error || !data) {
+    logger.error(error ?? 'Unknown error', 'Failed to load reading plans');
+    return [];
+  }
+
+  return (data as ReadingPlanRow[]).map(toReadingPlan);
 };
 
-export const getPlanById = (id: string): ReadingPlan | undefined =>
-  [readingPlan].find((p) => p.id === id);
+export const getPlanById = async (id: string): Promise<ReadingPlan | undefined> => {
+  const { data, error } = await supabase
+    .from('reading_plans')
+    .select('*')
+    .eq('id', id)
+    .single();
 
-export const getPlanDay = (planId: string, dayNumber: number): ReadingPlanDay | undefined => {
-  const plan = getPlanById(planId);
+  if (error || !data) return undefined;
+  return toReadingPlan(data as ReadingPlanRow);
+};
+
+export const getPlanDay = async (
+  planId: string,
+  dayNumber: number,
+): Promise<ReadingPlanDay | undefined> => {
+  const plan = await getPlanById(planId);
   return plan?.days.find((d) => d.day === dayNumber);
+};
+
+export const getUserPlanIds = async (userId: string): Promise<string[]> => {
+  const { data, error } = await supabase
+    .from('user_reading_plans')
+    .select('plan_id')
+    .eq('user_id', userId);
+
+  if (error || !data) {
+    logger.error(error ?? 'Unknown error', 'Failed to load user plan subscriptions');
+    return [];
+  }
+
+  return data.map((row) => row.plan_id);
+};
+
+export const followPlan = async (userId: string, planId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('user_reading_plans')
+    .insert({ user_id: userId, plan_id: planId });
+
+  if (error) logger.error(error, 'Failed to follow plan');
+};
+
+export const unfollowPlan = async (userId: string, planId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('user_reading_plans')
+    .delete()
+    .eq('user_id', userId)
+    .eq('plan_id', planId);
+
+  if (error) logger.error(error, 'Failed to unfollow plan');
 };

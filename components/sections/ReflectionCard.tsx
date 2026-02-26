@@ -1,3 +1,4 @@
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,7 +27,7 @@ const formatRelativeDate = (dateStr: string): string => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-export const ReflectionCard = ({
+export const ReflectionCard = React.memo(({
   reflections,
   index,
 }: ReflectionCardProps): JSX.Element => {
@@ -98,7 +99,7 @@ export const ReflectionCard = ({
       </LinearGradient>
     </Animated.View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {

@@ -82,6 +82,7 @@ export const ReflectionInput = ({
           placeholderTextColor={Colors.textMuted}
           multiline
           textAlignVertical="top"
+          accessibilityLabel={`Reflection for question ${questionIndex + 1}: ${questionText}`}
         />
       </AnimatedView>
 

@@ -26,7 +26,11 @@ import { ReadingPlanProvider } from '../lib/ReadingPlanContext';
 import { OnboardingProvider, useOnboarding } from '../lib/OnboardingContext';
 import { AuthProvider, useAuth } from '../lib/AuthContext';
 import { ChurchProvider } from '../lib/ChurchContext';
+import { initSentry, Sentry } from '../lib/sentry';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { OfflineBanner } from '../components/ui/OfflineBanner';
 
+initSentry();
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function AppGate() {
@@ -83,7 +87,7 @@ function AppGate() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -111,14 +115,19 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <OnboardingProvider>
-          <AppGate />
-        </OnboardingProvider>
-      </AuthProvider>
+      <ErrorBoundary>
+        <OfflineBanner />
+        <AuthProvider>
+          <OnboardingProvider>
+            <AppGate />
+          </OnboardingProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);
 
 const styles = StyleSheet.create({
   loading: {

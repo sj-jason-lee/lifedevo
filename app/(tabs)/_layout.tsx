@@ -4,7 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 
-type TabIconName = 'home' | 'book-open' | 'edit-3' | 'user';
+type TabIconName = 'home' | 'book' | 'edit-3' | 'user';
 
 const TAB_CONFIG: {
   name: string;
@@ -12,7 +12,7 @@ const TAB_CONFIG: {
   icon: TabIconName;
 }[] = [
   { name: 'index', title: 'Home', icon: 'home' },
-  { name: 'read', title: 'Read', icon: 'book-open' },
+  { name: 'read', title: 'Read', icon: 'book' },
   { name: 'reflect', title: 'Reflect', icon: 'edit-3' },
   { name: 'profile', title: 'Profile', icon: 'user' },
 ];
@@ -34,6 +34,7 @@ export default function TabLayout() {
           name={tab.name}
           options={{
             title: tab.title,
+            tabBarAccessibilityLabel: `${tab.title} tab`,
             tabBarIcon: ({ color, size }) => (
               <View style={styles.iconContainer}>
                 <Feather name={tab.icon} size={size - 2} color={color} />

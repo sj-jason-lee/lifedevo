@@ -8,6 +8,7 @@ import {
 } from 'react';
 import type { CompletionStore } from '../types';
 import * as storage from './completionStorage';
+import { useAuth } from './AuthContext';
 
 interface CompletionContextValue {
   completedIds: string[];
@@ -26,6 +27,7 @@ export const useCompletions = (): CompletionContextValue => {
 };
 
 export const CompletionProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useAuth();
   const [store, setStore] = useState<CompletionStore>({
     completedIds: [],
     completedAt: {},
@@ -33,11 +35,17 @@ export const CompletionProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    storage.load().then((loaded) => {
+    if (!user?.id) {
+      setStore({ completedIds: [], completedAt: {} });
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    storage.loadCompletions(user.id).then((loaded) => {
       setStore(loaded);
       setIsLoading(false);
     });
-  }, []);
+  }, [user?.id]);
 
   const isComplete = useCallback(
     (devotionalId: string): boolean => {
@@ -66,11 +74,13 @@ export const CompletionProvider = ({ children }: { children: ReactNode }) => {
             },
           };
         }
-        storage.save(updated);
+        if (user?.id) {
+          storage.toggleCompletion(user.id, devotionalId, !alreadyComplete);
+        }
         return updated;
       });
     },
-    []
+    [user?.id]
   );
 
   const completedAt = useCallback(

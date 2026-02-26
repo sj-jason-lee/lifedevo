@@ -4,13 +4,22 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   ReactNode,
 } from 'react';
-import type { ReadingPlanStore } from '../types';
+import type { ReadingPlan, ReadingPlanStore } from '../types';
 import * as storage from './readingPlanStorage';
+import * as planData from './readingPlanData';
+import { useAuth } from './AuthContext';
 
 interface ReadingPlanContextValue {
   isLoading: boolean;
+  allPlans: ReadingPlan[];
+  userPlanIds: string[];
+  userPlans: ReadingPlan[];
+  followPlan: (planId: string) => void;
+  unfollowPlan: (planId: string) => void;
+  isFollowing: (planId: string) => boolean;
   isDayComplete: (planId: string, day: number) => boolean;
   toggleDay: (planId: string, day: number) => void;
   completedCount: (planId: string) => number;
@@ -28,18 +37,69 @@ export const useReadingPlan = (): ReadingPlanContextValue => {
 };
 
 export const ReadingPlanProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useAuth();
   const [store, setStore] = useState<ReadingPlanStore>({
     completedDays: {},
     completedDayAt: {},
   });
+  const [allPlans, setAllPlans] = useState<ReadingPlan[]>([]);
+  const [userPlanIds, setUserPlanIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Load plan catalog on mount (public, no auth needed)
   useEffect(() => {
-    storage.load().then((loaded) => {
+    planData.getAllPlans().then(setAllPlans);
+  }, []);
+
+  // Load user-specific data when user changes
+  useEffect(() => {
+    if (!user?.id) {
+      setStore({ completedDays: {}, completedDayAt: {} });
+      setUserPlanIds([]);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    Promise.all([
+      storage.load(user.id),
+      planData.getUserPlanIds(user.id),
+    ]).then(([loaded, ids]) => {
       setStore(loaded);
+      setUserPlanIds(ids);
       setIsLoading(false);
     });
-  }, []);
+  }, [user?.id]);
+
+  // Derived: user's active plans filtered from catalog
+  const userPlans = useMemo(
+    () => allPlans.filter((p) => userPlanIds.includes(p.id)),
+    [allPlans, userPlanIds],
+  );
+
+  const followPlanFn = useCallback(
+    (planId: string): void => {
+      setUserPlanIds((prev) => (prev.includes(planId) ? prev : [...prev, planId]));
+      if (user?.id) {
+        planData.followPlan(user.id, planId);
+      }
+    },
+    [user?.id],
+  );
+
+  const unfollowPlanFn = useCallback(
+    (planId: string): void => {
+      setUserPlanIds((prev) => prev.filter((id) => id !== planId));
+      if (user?.id) {
+        planData.unfollowPlan(user.id, planId);
+      }
+    },
+    [user?.id],
+  );
+
+  const isFollowing = useCallback(
+    (planId: string): boolean => userPlanIds.includes(planId),
+    [userPlanIds],
+  );
 
   const isDayComplete = useCallback(
     (planId: string, day: number): boolean => {
@@ -83,11 +143,13 @@ export const ReadingPlanProvider = ({ children }: { children: ReactNode }) => {
           };
         }
 
-        storage.save(updated);
+        if (user?.id) {
+          storage.toggleDay(user.id, planId, day, !alreadyComplete);
+        }
         return updated;
       });
     },
-    []
+    [user?.id]
   );
 
   const completedCount = useCallback(
@@ -126,6 +188,12 @@ export const ReadingPlanProvider = ({ children }: { children: ReactNode }) => {
     <ReadingPlanContext.Provider
       value={{
         isLoading,
+        allPlans,
+        userPlanIds,
+        userPlans,
+        followPlan: followPlanFn,
+        unfollowPlan: unfollowPlanFn,
+        isFollowing,
         isDayComplete,
         toggleDay,
         completedCount,

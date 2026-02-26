@@ -10,15 +10,15 @@ import { Config } from '../../../constants/config';
 import { AnimatedPressable } from '../../../components/ui/AnimatedPressable';
 import { NoiseOverlay } from '../../../components/ui/NoiseOverlay';
 import { useFadeIn } from '../../../hooks/useFadeIn';
-import { getPlanDay } from '../../../lib/readingPlanData';
 import { useReadingPlan } from '../../../lib/ReadingPlanContext';
 
 export default function PassageDetailScreen() {
   const { planId, day } = useLocalSearchParams<{ planId: string; day: string }>();
   const insets = useSafeAreaInsets();
   const dayNumber = parseInt(day ?? '1', 10);
-  const planDay = getPlanDay(planId ?? '', dayNumber);
-  const { isDayComplete, toggleDay } = useReadingPlan();
+  const { allPlans, isDayComplete, toggleDay } = useReadingPlan();
+  const plan = allPlans.find((p) => p.id === planId);
+  const planDay = plan?.days.find((d) => d.day === dayNumber);
   const isComplete = planDay ? isDayComplete(planId ?? '', dayNumber) : false;
 
   const headerFade = useFadeIn(0);
@@ -49,6 +49,7 @@ export default function PassageDetailScreen() {
           <AnimatedPressable
             style={styles.backButton}
             onPress={() => router.back()}
+            accessibilityLabel="Go back"
           >
             <Feather name="arrow-left" size={22} color={Colors.textPrimary} />
           </AnimatedPressable>

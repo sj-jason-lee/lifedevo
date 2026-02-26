@@ -52,6 +52,7 @@ export const AnimatedPressable = ({
 
   return (
     <AnimatedPressableBase
+      accessibilityRole="button"
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}

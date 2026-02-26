@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { StyleSheet, Text, View, FlatList } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,7 +14,7 @@ import { ReadingProgress } from '../../components/sections/ReadingProgress';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { useDevotionals } from '../../hooks/useDevotionals';
 import { useChurch } from '../../hooks/useChurch';
-import { readingPlan } from '../../lib/readingPlanData';
+import { useReadingPlan } from '../../lib/ReadingPlanContext';
 import { useCompletions } from '../../lib/CompletionContext';
 import type { Devotional } from '../../types';
 
@@ -22,59 +23,13 @@ const formatDate = (dateStr: string): string => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-export default function ReadScreen() {
-  const insets = useSafeAreaInsets();
-  const { isComplete } = useCompletions();
-  const { church, isLoading: churchLoading } = useChurch();
-  const churchId = churchLoading ? undefined : church?.id ?? null;
-  const { devotionals } = useDevotionals(churchId);
-  const headerFade = useFadeIn(0);
-  const planFade = useFadeIn(Config.animation.stagger.card);
-  const readingPlanFade = useFadeIn(Config.animation.stagger.card * 2);
-
-  return (
-    <View style={styles.container}>
-      <NoiseOverlay />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 40 },
-        ]}
-      >
-        {/* Header */}
-        <Animated.View style={headerFade}>
-          <Text style={styles.headerLabel}>DEVOTIONALS</Text>
-          <Text style={styles.headerTitle}>Read</Text>
-          <View style={styles.accentLine} />
-        </Animated.View>
-
-        {/* All Devotionals */}
-        <Animated.View style={planFade}>
-          <Text style={styles.listHeading}>All Devotionals</Text>
-        </Animated.View>
-
-        {devotionals.map((devo, i) => (
-          <DevotionalListCard key={devo.id} devotional={devo} index={i} completed={isComplete(devo.id)} />
-        ))}
-
-        {/* Reading Plan */}
-        <Animated.View style={[styles.sectionSpacing, { marginTop: Config.spacing.sectionGap }, readingPlanFade]}>
-          <Text style={styles.listHeading}>Reading Plan</Text>
-          <ReadingProgress plan={readingPlan} index={1} />
-        </Animated.View>
-      </ScrollView>
-    </View>
-  );
-}
-
 interface DevotionalListCardProps {
   devotional: Devotional;
   index: number;
   completed: boolean;
 }
 
-const DevotionalListCard = ({ devotional, index, completed }: DevotionalListCardProps) => {
+const DevotionalListCard = React.memo(({ devotional, index, completed }: DevotionalListCardProps) => {
   const fadeStyle = useFadeIn(
     Config.animation.stagger.card * (index + 2)
   );
@@ -84,6 +39,7 @@ const DevotionalListCard = ({ devotional, index, completed }: DevotionalListCard
     <Animated.View style={[styles.cardSpacing, fadeStyle]}>
       <AnimatedPressable
         onPress={() => router.push(`/devotional/${devotional.id}`)}
+        accessibilityLabel={`${devotional.title}, ${devotional.scripture}${completed ? ', completed' : ''}`}
       >
         <GradientCard style={styles.listCard}>
           <View style={styles.cardContent}>
@@ -126,7 +82,93 @@ const DevotionalListCard = ({ devotional, index, completed }: DevotionalListCard
       </AnimatedPressable>
     </Animated.View>
   );
-};
+});
+
+export default function ReadScreen() {
+  const insets = useSafeAreaInsets();
+  const { isComplete } = useCompletions();
+  const { church, isLoading: churchLoading } = useChurch();
+  const { userPlans } = useReadingPlan();
+  const churchId = churchLoading ? undefined : church?.id ?? null;
+  const { devotionals } = useDevotionals(churchId);
+  const headerFade = useFadeIn(0);
+  const planFade = useFadeIn(Config.animation.stagger.card);
+  const readingPlanFade = useFadeIn(Config.animation.stagger.card * 2);
+
+  const renderItem = useCallback(({ item, index }: { item: Devotional; index: number }) => (
+    <DevotionalListCard devotional={item} index={index} completed={isComplete(item.id)} />
+  ), [isComplete]);
+
+  const keyExtractor = useCallback((item: Devotional) => item.id, []);
+
+  const ListHeader = useMemo(() => (
+    <>
+      {/* Header */}
+      <Animated.View style={headerFade}>
+        <Text style={styles.headerLabel} accessibilityRole="header">LIBRARY</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">Read</Text>
+        <View style={styles.accentLine} />
+      </Animated.View>
+
+      {/* All Devotionals */}
+      <Animated.View style={planFade}>
+        <View style={styles.sectionHeadingRow}>
+          <Feather name="heart" size={18} color={Colors.textAccent} />
+          <Text style={styles.listHeading}>Devotionals</Text>
+        </View>
+      </Animated.View>
+    </>
+  ), [headerFade, planFade]);
+
+  const ListFooter = useMemo(() => (
+    <>
+      {/* Divider */}
+      <View style={styles.sectionDivider} />
+
+      {/* Reading Plans */}
+      <Animated.View style={[styles.sectionSpacing, readingPlanFade]}>
+        <View style={styles.sectionHeadingRow}>
+          <Feather name="map" size={18} color={Colors.textAccent} />
+          <Text style={styles.listHeading}>Reading Plans</Text>
+        </View>
+        {userPlans.map((plan, i) => (
+          <View key={plan.id} style={i > 0 ? styles.planSpacing : undefined}>
+            <ReadingProgress plan={plan} index={i + 1} />
+          </View>
+        ))}
+        <View style={userPlans.length > 0 ? styles.planSpacing : undefined}>
+          <AnimatedPressable onPress={() => router.push('/plans')}>
+            <GradientCard style={styles.exploreCta}>
+              <Feather name="map" size={20} color={Colors.textAccent} />
+              <Text style={styles.exploreCtaText}>Explore Reading Plans</Text>
+              <Feather name="chevron-right" size={18} color={Colors.textMuted} />
+            </GradientCard>
+          </AnimatedPressable>
+        </View>
+      </Animated.View>
+    </>
+  ), [readingPlanFade, userPlans]);
+
+  return (
+    <View style={styles.container}>
+      <NoiseOverlay />
+      <FlatList
+        data={devotionals}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={ListHeader}
+        ListFooterComponent={ListFooter}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 40 },
+        ]}
+        initialNumToRender={10}
+        windowSize={5}
+      />
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -163,13 +205,23 @@ const styles = StyleSheet.create({
     marginBottom: Config.spacing.sectionGap,
   },
 
-  // List heading
+  // Section headings
+  sectionHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
   listHeading: {
     fontSize: 20,
     lineHeight: 24,
     fontFamily: FontFamily.headingSemiBold,
     color: Colors.textPrimary,
-    marginBottom: 16,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: Config.spacing.sectionGap,
   },
 
   // List cards
@@ -226,5 +278,21 @@ const styles = StyleSheet.create({
   },
   cardChevron: {
     marginLeft: 12,
+  },
+  planSpacing: {
+    marginTop: 16,
+  },
+  exploreCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+  },
+  exploreCtaText: {
+    flex: 1,
+    fontFamily: FontFamily.headingSemiBold,
+    fontSize: 16,
+    color: Colors.textAccent,
   },
 });

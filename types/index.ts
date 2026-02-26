@@ -56,6 +56,7 @@ export interface DevotionalAnswers {
   devotionalId: string;
   answers: Record<number, string>; // questionIndex → answer text
   shareFlags: Record<number, boolean>; // questionIndex → share with community (default true)
+  sharedAt: Record<number, string | null>; // questionIndex → ISO timestamp if shared, null if private
   lastModified: string;
 }
 
@@ -77,7 +78,6 @@ export interface SharedReflection {
 
 export interface ReflectionsStore {
   answers: Record<string, DevotionalAnswers>; // keyed by devotionalId
-  sharedIds: string[];
 }
 
 export interface CompletionStore {

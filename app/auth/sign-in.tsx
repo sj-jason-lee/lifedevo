@@ -36,6 +36,7 @@ export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -48,7 +49,20 @@ export default function SignInScreen() {
   const ctaFade = useFadeIn(Config.animation.stagger.text * 3);
   const socialFade = useFadeIn(Config.animation.stagger.text * 4);
 
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !loading;
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const validateEmail = (value: string): boolean => {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) return true; // don't show error on empty
+    if (!EMAIL_REGEX.test(trimmed)) {
+      setEmailError('Invalid email format');
+      return false;
+    }
+    setEmailError('');
+    return true;
+  };
+
+  const canSubmit = email.trim().length > 0 && password.length > 0 && !loading && !emailError;
 
   const emailBorder = useAnimatedStyle(() => ({
     borderColor: interpolateColor(emailFocus.value, [0, 1], [Colors.border, Colors.accent]),
@@ -59,6 +73,7 @@ export default function SignInScreen() {
   }));
 
   const handleSignIn = async () => {
+    if (!validateEmail(email)) return;
     if (!canSubmit) return;
     setError('');
     setLoading(true);
@@ -115,9 +130,9 @@ export default function SignInScreen() {
               <TextInput
                 style={styles.input}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => { setEmail(v); setEmailError(''); }}
                 onFocus={() => { emailFocus.value = withTiming(1, { duration: 250 }); }}
-                onBlur={() => { emailFocus.value = withTiming(0, { duration: 250 }); }}
+                onBlur={() => { emailFocus.value = withTiming(0, { duration: 250 }); validateEmail(email); }}
                 placeholder="Email"
                 placeholderTextColor={Colors.textMuted}
                 autoCapitalize="none"
@@ -127,6 +142,7 @@ export default function SignInScreen() {
                 returnKeyType="next"
               />
             </AnimatedView>
+            {emailError !== '' && <Text style={styles.fieldError}>{emailError}</Text>}
 
             <AnimatedView style={[styles.inputWrapper, styles.inputSpacing, passwordBorder]}>
               <View style={styles.passwordRow}>
@@ -291,9 +307,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 18,
   },
+  fieldError: {
+    ...TypeScale.caption,
+    color: '#E63B2E',
+    marginTop: 6,
+  },
   errorText: {
     ...TypeScale.caption,
-    color: Colors.accent,
+    color: '#E63B2E',
     marginTop: 12,
   },
 

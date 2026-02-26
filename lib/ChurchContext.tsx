@@ -10,6 +10,7 @@ import { supabase } from './supabase';
 import { useAuth } from './AuthContext';
 import { useOnboarding } from './OnboardingContext';
 import type { Church, ChurchMember, ChurchRole } from '../types';
+import { logger } from './logger';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -38,6 +39,8 @@ interface ChurchContextValue {
   joinChurch: (inviteCode: string) => Promise<{ error: string | null }>;
   leaveChurch: () => Promise<{ error: string | null }>;
   removeMember: (userId: string) => Promise<{ error: string | null }>;
+  updateChurch: (name: string, description: string) => Promise<{ error: string | null }>;
+  updateMemberRole: (userId: string, newRole: ChurchRole) => Promise<{ error: string | null }>;
   refresh: () => Promise<void>;
 }
 
@@ -61,7 +64,7 @@ export const ChurchProvider = ({ children }: { children: ReactNode }) => {
   // React detects setState during render and re-renders before painting.
   const [prevUserId, setPrevUserId] = useState<string | undefined>(user?.id);
   if (prevUserId !== user?.id) {
-    console.log('[ChurchContext] User changed:', prevUserId, '->', user?.id, '— resetting state');
+    logger.debug('[ChurchContext] User changed:', prevUserId, '->', user?.id, '— resetting state');
     setPrevUserId(user?.id);
     setIsLoading(true);
     setChurch(null);
@@ -70,10 +73,10 @@ export const ChurchProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const loadChurch = useCallback(async () => {
-    console.log('[ChurchContext] loadChurch called, user:', user?.id, 'authLoading:', authLoading);
+    logger.debug('[ChurchContext] loadChurch called, user:', user?.id, 'authLoading:', authLoading);
 
     if (!user) {
-      console.log('[ChurchContext] No user, clearing state');
+      logger.debug('[ChurchContext] No user, clearing state');
       setChurch(null);
       setMembers([]);
       setIsLeader(false);
@@ -90,10 +93,10 @@ export const ChurchProvider = ({ children }: { children: ReactNode }) => {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      console.log('[ChurchContext] membership query result:', JSON.stringify({ membership, memberError }));
+      logger.debug('[ChurchContext] membership query result:', JSON.stringify({ membership, memberError }));
 
       if (memberError || !membership) {
-        console.log('[ChurchContext] No membership found — user has no church. memberError:', memberError?.message ?? 'none');
+        logger.debug('[ChurchContext] No membership found — user has no church. memberError:', memberError?.message ?? 'none');
         setChurch(null);
         setMembers([]);
         setIsLeader(false);
@@ -110,10 +113,10 @@ export const ChurchProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', membership.church_id)
         .single();
 
-      console.log('[ChurchContext] church query result:', JSON.stringify({ churchData: churchData?.id, churchError }));
+      logger.debug('[ChurchContext] church query result:', JSON.stringify({ churchData: churchData?.id, churchError }));
 
       if (churchError || !churchData) {
-        console.log('[ChurchContext] Church fetch failed:', churchError?.message ?? 'no data');
+        logger.debug('[ChurchContext] Church fetch failed:', churchError?.message ?? 'no data');
         setChurch(null);
         setMembers([]);
         setIsLoading(false);
@@ -136,7 +139,7 @@ export const ChurchProvider = ({ children }: { children: ReactNode }) => {
         .eq('church_id', membership.church_id)
         .order('joined_at', { ascending: true });
 
-      console.log('[ChurchContext] members query:', JSON.stringify({ count: memberRows?.length, membersError: membersError?.message ?? null }));
+      logger.debug('[ChurchContext] members query:', JSON.stringify({ count: memberRows?.length, membersError: membersError?.message ?? null }));
 
       if (memberRows && memberRows.length > 0) {
         // Fetch profiles separately for all member user_ids
@@ -146,7 +149,7 @@ export const ChurchProvider = ({ children }: { children: ReactNode }) => {
           .select('id, user_name')
           .in('id', userIds);
 
-        console.log('[ChurchContext] profiles query:', JSON.stringify({
+        logger.debug('[ChurchContext] profiles query:', JSON.stringify({
           profiles: profileRows?.map(p => ({ id: p.id.slice(0, 8), name: p.user_name })),
           profilesError: profilesError?.message ?? null,
         }));
@@ -170,21 +173,21 @@ export const ChurchProvider = ({ children }: { children: ReactNode }) => {
             initials: deriveInitials(name),
           };
         });
-        console.log('[ChurchContext] setMembers:', mapped.length, 'members');
+        logger.debug('[ChurchContext] setMembers:', mapped.length, 'members');
         setMembers(mapped);
       } else {
         setMembers([]);
       }
     } catch (e) {
-      console.warn('[ChurchContext] loadChurch exception:', e);
+      logger.warn('[ChurchContext] loadChurch exception:', e);
     } finally {
-      console.log('[ChurchContext] loadChurch complete, setting isLoading=false');
+      logger.debug('[ChurchContext] loadChurch complete, setting isLoading=false');
       setIsLoading(false);
     }
   }, [user?.id]);
 
   useEffect(() => {
-    console.log('[ChurchContext] useEffect triggered — authLoading:', authLoading, 'user:', user?.id);
+    logger.debug('[ChurchContext] useEffect triggered — authLoading:', authLoading, 'user:', user?.id);
     if (authLoading) return;
     loadChurch();
   }, [loadChurch, authLoading]);
@@ -192,7 +195,7 @@ export const ChurchProvider = ({ children }: { children: ReactNode }) => {
   // Reconcile profiles.church_code if it drifted from the canonical source
   useEffect(() => {
     if (church && church.inviteCode && church.inviteCode !== currentChurchCode) {
-      console.log('[ChurchContext] Reconciling church_code:', currentChurchCode, '->', church.inviteCode);
+      logger.debug('[ChurchContext] Reconciling church_code:', currentChurchCode, '->', church.inviteCode);
       setChurchCode(church.inviteCode);
     }
   }, [church?.inviteCode, currentChurchCode, setChurchCode]);
@@ -329,6 +332,48 @@ export const ChurchProvider = ({ children }: { children: ReactNode }) => {
     [church]
   );
 
+  const updateChurch = useCallback(
+    async (name: string, description: string): Promise<{ error: string | null }> => {
+      if (!church) return { error: 'No church' };
+
+      const { error } = await supabase
+        .from('churches')
+        .update({
+          name: name.trim(),
+          description: description.trim(),
+        })
+        .eq('id', church.id);
+
+      if (error) return { error: error.message };
+
+      setChurch((prev) =>
+        prev ? { ...prev, name: name.trim(), description: description.trim() } : prev
+      );
+      return { error: null };
+    },
+    [church]
+  );
+
+  const updateMemberRole = useCallback(
+    async (userId: string, newRole: ChurchRole): Promise<{ error: string | null }> => {
+      if (!church) return { error: 'No church' };
+
+      const { error } = await supabase
+        .from('church_members')
+        .update({ church_role: newRole })
+        .eq('church_id', church.id)
+        .eq('user_id', userId);
+
+      if (error) return { error: error.message };
+
+      setMembers((prev) =>
+        prev.map((m) => (m.userId === userId ? { ...m, churchRole: newRole } : m))
+      );
+      return { error: null };
+    },
+    [church]
+  );
+
   const value: ChurchContextValue = {
     church,
     members,
@@ -339,6 +384,8 @@ export const ChurchProvider = ({ children }: { children: ReactNode }) => {
     joinChurch,
     leaveChurch,
     removeMember,
+    updateChurch,
+    updateMemberRole,
     refresh: loadChurch,
   };
 

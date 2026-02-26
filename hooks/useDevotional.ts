@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Devotional, DevotionalRow } from '../types';
 
@@ -19,23 +19,34 @@ const mapRow = (row: DevotionalRow): Devotional => ({
 export const useDevotional = (id: string | undefined) => {
   const [devotional, setDevotional] = useState<Devotional | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetch = useCallback(async () => {
     if (!id) {
       setIsLoading(false);
       return;
     }
 
-    supabase
+    setIsLoading(true);
+    setError(null);
+
+    const { data, error: err } = await supabase
       .from('devotionals')
       .select('*')
       .eq('id', id)
-      .single()
-      .then(({ data }) => {
-        if (data) setDevotional(mapRow(data as DevotionalRow));
-        setIsLoading(false);
-      });
+      .single();
+
+    if (err) {
+      setError(err.message);
+    } else if (data) {
+      setDevotional(mapRow(data as DevotionalRow));
+    }
+    setIsLoading(false);
   }, [id]);
 
-  return { devotional, isLoading };
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { devotional, isLoading, error, refetch: fetch };
 };

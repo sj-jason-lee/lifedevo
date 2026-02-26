@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import React, { useMemo, useCallback } from 'react';
+import { StyleSheet, Text, View, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -13,6 +13,8 @@ import { ReflectionCard } from '../../components/sections/ReflectionCard';
 import { useReflections } from '../../lib/ReflectionContext';
 import { useChurch } from '../../hooks/useChurch';
 import type { SharedReflection } from '../../types';
+
+type ReflectionGroup = SharedReflection[];
 
 export default function ReflectScreen() {
   const insets = useSafeAreaInsets();
@@ -33,83 +35,100 @@ export default function ReflectScreen() {
       .sort((a, b) => new Date(b[0].sharedAt).getTime() - new Date(a[0].sharedAt).getTime());
   }, [communityFeed]);
 
+  const renderItem = useCallback(({ item, index }: { item: ReflectionGroup; index: number }) => (
+    <ReflectionCard
+      reflections={item}
+      index={index}
+    />
+  ), []);
+
+  const keyExtractor = useCallback((item: ReflectionGroup) =>
+    `${item[0].devotionalId}-${item[0].userId}`, []);
+
+  const ListHeader = useMemo(() => (
+    <>
+      {/* Header */}
+      <Text style={styles.monoLabel} accessibilityRole="header">
+        {hasChurch ? 'YOUR CHURCH' : 'COMMUNITY'}
+      </Text>
+      <Text style={styles.heading} accessibilityRole="header">Reflect</Text>
+      <View style={styles.accentLine} />
+
+      {/* Church card */}
+      {churchLoading ? null : church ? (
+        <AnimatedPressable
+          onPress={() => router.push('/church')}
+          style={styles.churchCard}
+        >
+          <GradientCard style={styles.churchCardInner}>
+            <View style={styles.churchCardRow}>
+              <View style={styles.churchCardLeft}>
+                <Text style={styles.churchCardName}>{church.name}</Text>
+                <Text style={styles.churchCardMeta}>
+                  {memberCount} {memberCount === 1 ? 'member' : 'members'}
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={Colors.textMuted} />
+            </View>
+          </GradientCard>
+        </AnimatedPressable>
+      ) : (
+        <AnimatedPressable
+          onPress={() => router.push('/church')}
+          style={styles.churchCard}
+        >
+          <View style={styles.banner}>
+            <Text style={styles.bannerText}>
+              Join or create a church to see community reflections.
+            </Text>
+            <View style={styles.bannerAction}>
+              <Text style={styles.bannerActionText}>Get Started</Text>
+              <Feather name="arrow-right" size={14} color={Colors.accent} />
+            </View>
+          </View>
+        </AnimatedPressable>
+      )}
+
+      {/* Prompt banner */}
+      {hasChurch && (
+        <View style={styles.banner}>
+          <Text style={styles.bannerText}>
+            See how your church community is reflecting on this week's devotionals.
+            Share your own reflections from any devotional to encourage others.
+          </Text>
+        </View>
+      )}
+    </>
+  ), [hasChurch, churchLoading, church, memberCount]);
+
+  const ListEmpty = useMemo(() => {
+    if (isLoading) {
+      return <Text style={styles.loadingText}>Loading reflections...</Text>;
+    }
+    return (
+      <Text style={styles.emptyText}>
+        No reflections yet. Be the first to share!
+      </Text>
+    );
+  }, [isLoading]);
+
   return (
     <View style={styles.container}>
       <NoiseOverlay />
-      <ScrollView
+      <FlatList
+        data={grouped}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={ListEmpty}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
           { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 40 },
         ]}
-      >
-        {/* Header */}
-        <Text style={styles.monoLabel}>{hasChurch ? 'YOUR CHURCH' : 'COMMUNITY'}</Text>
-        <Text style={styles.heading}>Reflect</Text>
-        <View style={styles.accentLine} />
-
-        {/* Church card */}
-        {churchLoading ? null : church ? (
-          <AnimatedPressable
-            onPress={() => router.push('/church')}
-            style={styles.churchCard}
-          >
-            <GradientCard style={styles.churchCardInner}>
-              <View style={styles.churchCardRow}>
-                <View style={styles.churchCardLeft}>
-                  <Text style={styles.churchCardName}>{church.name}</Text>
-                  <Text style={styles.churchCardMeta}>
-                    {memberCount} {memberCount === 1 ? 'member' : 'members'}
-                  </Text>
-                </View>
-                <Feather name="chevron-right" size={20} color={Colors.textMuted} />
-              </View>
-            </GradientCard>
-          </AnimatedPressable>
-        ) : (
-          <AnimatedPressable
-            onPress={() => router.push('/church')}
-            style={styles.churchCard}
-          >
-            <View style={styles.banner}>
-              <Text style={styles.bannerText}>
-                Join or create a church to see community reflections.
-              </Text>
-              <View style={styles.bannerAction}>
-                <Text style={styles.bannerActionText}>Get Started</Text>
-                <Feather name="arrow-right" size={14} color={Colors.accent} />
-              </View>
-            </View>
-          </AnimatedPressable>
-        )}
-
-        {/* Prompt banner */}
-        {hasChurch && (
-          <View style={styles.banner}>
-            <Text style={styles.bannerText}>
-              See how your church community is reflecting on this week's devotionals.
-              Share your own reflections from any devotional to encourage others.
-            </Text>
-          </View>
-        )}
-
-        {/* Feed */}
-        {isLoading ? (
-          <Text style={styles.loadingText}>Loading reflections...</Text>
-        ) : grouped.length === 0 ? (
-          <Text style={styles.emptyText}>
-            No reflections yet. Be the first to share!
-          </Text>
-        ) : (
-          grouped.map((reflections, i) => (
-            <ReflectionCard
-              key={`${reflections[0].devotionalId}-${reflections[0].userId}`}
-              reflections={reflections}
-              index={i}
-            />
-          ))
-        )}
-      </ScrollView>
+        initialNumToRender={10}
+        windowSize={5}
+      />
     </View>
   );
 }

@@ -31,12 +31,14 @@ import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
 import { NoiseOverlay } from '../../components/ui/NoiseOverlay';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { useChurch } from '../../hooks/useChurch';
+import { useAuth } from '../../lib/AuthContext';
 import { useOnboarding } from '../../lib/OnboardingContext';
 
 const AnimatedView = Animated.View;
 
 export default function ChurchScreen() {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const { isAuthor, isAdmin } = useOnboarding();
   const {
     church,
@@ -46,7 +48,56 @@ export default function ChurchScreen() {
     createChurch,
     joinChurch,
     leaveChurch,
+    updateChurch,
   } = useChurch();
+
+  // Edit mode (creator only)
+  const isCreator = !!(church && user && church.createdBy === user.id);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+  const editNameFocus = useSharedValue(0);
+  const editDescFocus = useSharedValue(0);
+
+  const editNameBorderStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(
+      editNameFocus.value,
+      [0, 1],
+      [Colors.border, Colors.accent]
+    ),
+  }));
+
+  const editDescBorderStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(
+      editDescFocus.value,
+      [0, 1],
+      [Colors.border, Colors.accent]
+    ),
+  }));
+
+  const handleStartEdit = () => {
+    if (!church) return;
+    setEditName(church.name);
+    setEditDesc(church.description);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editName.trim()) return;
+    setEditLoading(true);
+    const { error } = await updateChurch(editName, editDesc);
+    setEditLoading(false);
+    if (error) {
+      Alert.alert('Error', error);
+    } else {
+      setIsEditing(false);
+    }
+  };
 
   // Join flow state
   const [joinCode, setJoinCode] = useState('');
@@ -174,7 +225,66 @@ export default function ChurchScreen() {
               <Feather name="arrow-left" size={20} color={Colors.textPrimary} />
             </AnimatedPressable>
             <Text style={styles.monoLabel}>YOUR CHURCH</Text>
-            <Text style={styles.heading}>{church.name}</Text>
+            {isEditing ? (
+              <>
+                <Text style={styles.editLabel}>Church Name</Text>
+                <AnimatedView style={[styles.inputWrapper, editNameBorderStyle]}>
+                  <TextInput
+                    style={styles.createInput}
+                    value={editName}
+                    onChangeText={setEditName}
+                    onFocus={() => { editNameFocus.value = withTiming(1, { duration: 250 }); }}
+                    onBlur={() => { editNameFocus.value = withTiming(0, { duration: 250 }); }}
+                    placeholder="Church name"
+                    placeholderTextColor={Colors.textMuted}
+                    autoCapitalize="words"
+                  />
+                </AnimatedView>
+                <Text style={[styles.editLabel, { marginTop: 16 }]}>Description</Text>
+                <AnimatedView style={[styles.inputWrapper, editDescBorderStyle]}>
+                  <TextInput
+                    style={[styles.createInput, styles.multilineInput]}
+                    value={editDesc}
+                    onChangeText={setEditDesc}
+                    onFocus={() => { editDescFocus.value = withTiming(1, { duration: 250 }); }}
+                    onBlur={() => { editDescFocus.value = withTiming(0, { duration: 250 }); }}
+                    placeholder="A short description"
+                    placeholderTextColor={Colors.textMuted}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </AnimatedView>
+                <View style={styles.editActions}>
+                  <AnimatedPressable
+                    style={[styles.editSaveBtn, !editName.trim() && styles.btnDisabled]}
+                    onPress={handleSaveEdit}
+                    haptic={!!editName.trim()}
+                  >
+                    {editLoading ? (
+                      <ActivityIndicator size="small" color={Colors.textDark} />
+                    ) : (
+                      <>
+                        <Feather name="check" size={16} color={Colors.textDark} />
+                        <Text style={styles.editSaveText}>Save</Text>
+                      </>
+                    )}
+                  </AnimatedPressable>
+                  <AnimatedPressable style={styles.editCancelBtn} onPress={handleCancelEdit}>
+                    <Text style={styles.editCancelText}>Cancel</Text>
+                  </AnimatedPressable>
+                </View>
+              </>
+            ) : (
+              <View style={styles.headingEditRow}>
+                <Text style={styles.heading}>{church.name}</Text>
+                {isCreator && (
+                  <AnimatedPressable onPress={handleStartEdit} style={styles.editIconBtn}>
+                    <Feather name="edit-2" size={18} color={Colors.textMuted} />
+                  </AnimatedPressable>
+                )}
+              </View>
+            )}
             <View style={styles.accentLine} />
           </Animated.View>
 
@@ -211,7 +321,7 @@ export default function ChurchScreen() {
 
           {/* Info Card */}
           <Animated.View style={[styles.infoSection, contentFade]}>
-            {church.description ? (
+            {!isEditing && church.description ? (
               <GradientCard style={styles.infoCard}>
                 <Text style={styles.descriptionText}>{church.description}</Text>
               </GradientCard>
@@ -707,6 +817,51 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   cancelText: {
+    ...TypeScale.body,
+    color: Colors.textMuted,
+  },
+
+  // Edit mode
+  headingEditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  editIconBtn: {
+    padding: 6,
+  },
+  editLabel: {
+    ...TypeScale.mono,
+    color: Colors.textMuted,
+    marginBottom: 8,
+  },
+  editActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  editSaveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.accent,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: Config.radius.sm,
+  },
+  editSaveText: {
+    fontFamily: FontFamily.headingSemiBold,
+    fontSize: 14,
+    color: Colors.textDark,
+  },
+  editCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  editCancelText: {
     ...TypeScale.body,
     color: Colors.textMuted,
   },
