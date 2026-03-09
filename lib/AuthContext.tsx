@@ -9,6 +9,7 @@ import {
 import { supabase } from './supabase';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session, User } from '@supabase/supabase-js';
 import { logger } from './logger';
 
@@ -23,6 +24,7 @@ interface AuthContextValue {
   resendConfirmation: (email: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -146,6 +148,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
   }, []);
 
+  const deleteAccount = useCallback(async (): Promise<{ error: string | null }> => {
+    try {
+      const { error } = await supabase.rpc('delete_user');
+      if (error) return { error: error.message };
+
+      // Clear local data
+      await AsyncStorage.multiRemove([
+        '@pasture/onboarding',
+        '@pasture/notification-settings',
+      ]);
+
+      await supabase.auth.signOut();
+      return { error: null };
+    } catch (e: any) {
+      return { error: e.message ?? 'Failed to delete account.' };
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -157,6 +177,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         resendConfirmation,
         signInWithGoogle,
         signOut,
+        deleteAccount,
       }}
     >
       {children}

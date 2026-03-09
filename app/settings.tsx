@@ -8,6 +8,7 @@ import {
   Switch,
   Alert,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -198,7 +199,8 @@ const TimeInput = ({ hour, minute, onChange }: TimeInputProps) => {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { userName, churchCode, setUserName, setChurchCode } = useOnboarding();
-  const { user, signOut } = useAuth();
+  const { user, signOut, deleteAccount } = useAuth();
+  const [deleting, setDeleting] = useState(false);
   const { church } = useChurch();
 
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
@@ -260,6 +262,67 @@ export default function SettingsScreen() {
     ]);
   }, [signOut]);
 
+  const performDelete = useCallback(async () => {
+    setDeleting(true);
+    await cancelDailyReminder();
+    const { error } = await deleteAccount();
+    setDeleting(false);
+    if (error) {
+      Alert.alert('Error', `Could not delete account: ${error}`);
+    }
+  }, [deleteAccount]);
+
+  const handleDeleteAccount = useCallback(() => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all your data. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () => {
+            if (Platform.OS === 'ios') {
+              Alert.prompt(
+                'Confirm Deletion',
+                'Type DELETE to confirm.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: (text) => {
+                      if (text?.trim().toUpperCase() === 'DELETE') {
+                        performDelete();
+                      } else {
+                        Alert.alert('Cancelled', 'You must type DELETE to confirm.');
+                      }
+                    },
+                  },
+                ],
+                'plain-text'
+              );
+            } else {
+              // Android: no Alert.prompt, use second confirmation
+              Alert.alert(
+                'Are you absolutely sure?',
+                'All your data will be permanently removed. This cannot be undone.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Yes, Delete My Account',
+                    style: 'destructive',
+                    onPress: performDelete,
+                  },
+                ]
+              );
+            }
+          },
+        },
+      ]
+    );
+  }, [performDelete]);
+
   const appVersion =
     Constants.expoConfig?.version ?? Constants.manifest?.version ?? '1.0.0';
 
@@ -269,6 +332,7 @@ export default function SettingsScreen() {
   const notifFade = useFadeIn(Config.animation.stagger.card * 2);
   const aboutFade = useFadeIn(Config.animation.stagger.card * 3);
   const actionsFade = useFadeIn(Config.animation.stagger.card * 4);
+  const dangerFade = useFadeIn(Config.animation.stagger.card * 5);
 
   return (
     <View style={styles.container}>
@@ -381,6 +445,39 @@ export default function SettingsScreen() {
             <Feather name="log-out" size={18} color={Colors.accent} />
             <Text style={styles.signOutText}>Sign Out</Text>
           </AnimatedPressable>
+        </Animated.View>
+
+        {/* Danger Zone */}
+        <Animated.View style={dangerFade}>
+          <Text style={styles.sectionHeading}>Danger Zone</Text>
+          <GradientCard
+            style={styles.sectionCard}
+            colors={['rgba(200,60,60,0.08)', 'rgba(200,60,60,0.03)']}
+          >
+            <View style={styles.dangerContent}>
+              <View style={styles.dangerHeader}>
+                <Feather name="alert-triangle" size={20} color="#C83C3C" />
+                <Text style={styles.dangerTitle}>Delete Account</Text>
+              </View>
+              <Text style={styles.dangerDescription}>
+                Permanently delete your account and all associated data. This action cannot be undone.
+              </Text>
+              <AnimatedPressable
+                style={styles.deleteButton}
+                onPress={handleDeleteAccount}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Feather name="trash-2" size={16} color="#FFFFFF" />
+                    <Text style={styles.deleteButtonText}>Delete Account</Text>
+                  </>
+                )}
+              </AnimatedPressable>
+            </View>
+          </GradientCard>
         </Animated.View>
       </ScrollView>
     </View>
@@ -567,5 +664,43 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.headingSemiBold,
     fontSize: 16,
     color: Colors.accent,
+  },
+
+  // Danger zone
+  dangerContent: {
+    paddingVertical: 8,
+    gap: 14,
+  },
+  dangerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dangerTitle: {
+    fontFamily: FontFamily.headingSemiBold,
+    fontSize: 17,
+    color: '#C83C3C',
+  },
+  dangerDescription: {
+    ...TypeScale.caption,
+    color: Colors.textMuted,
+    lineHeight: 20,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: Config.radius.sm,
+    backgroundColor: '#C83C3C',
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+  deleteButtonText: {
+    fontFamily: FontFamily.headingSemiBold,
+    fontSize: 14,
+    color: '#FFFFFF',
   },
 });

@@ -59,9 +59,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-    privacyUrl: 'https://YOUR_DOMAIN/privacy',
-    termsUrl: 'https://YOUR_DOMAIN/terms',
-    supportEmail: 'YOUR_EMAIL',
+    // TODO: Replace with your hosted privacy policy URL (e.g. GitHub Pages)
+    privacyUrl: 'https://sj-jason-lee.github.io/pasture-legal/privacy',
+    // TODO: Replace with your hosted terms of service URL
+    termsUrl: 'https://sj-jason-lee.github.io/pasture-legal/terms',
+    // TODO: Replace with your support email address
+    supportEmail: 'jason.sj.lee@icloud.com',
     eas: {
       projectId: '4f7c89b0-3b9b-4782-adaf-bf82665acac0',
     },
