@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useCallback,
+  useMemo,
   ReactNode,
 } from 'react';
 import type {
@@ -16,6 +17,11 @@ import * as storage from './reflectionStorage';
 import { useOnboarding } from './OnboardingContext';
 import { useAuth } from './AuthContext';
 import { supabase } from './supabase';
+import {
+  reportReflection as apiReportReflection,
+  blockUser as apiBlockUser,
+  loadBlockedUsers,
+} from './moderation';
 
 interface ShareToggledMeta {
   title: string;
@@ -41,6 +47,8 @@ interface ReflectionContextValue {
   shareReflection: (reflection: Omit<SharedReflection, 'id' | 'isCurrentUser' | 'sharedAt'>) => void;
   shareToggledAnswers: (devotionalId: string, meta: ShareToggledMeta) => void;
   isShared: (devotionalId: string, questionIndex: number) => boolean;
+  reportReflection: (reflectionId: string, reportedUserId: string, reason: string) => Promise<void>;
+  blockUser: (blockedUserId: string) => Promise<void>;
 }
 
 const ReflectionContext = createContext<ReflectionContextValue | null>(null);
@@ -58,6 +66,7 @@ export const ReflectionProvider = ({ children }: { children: ReactNode }) => {
     answers: {},
   });
   const [communityFeed, setCommunityFeed] = useState<SharedReflection[]>([]);
+  const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
   // Per-field debounce timers
@@ -80,6 +89,15 @@ export const ReflectionProvider = ({ children }: { children: ReactNode }) => {
       setStore(loaded);
       setIsLoading(false);
     });
+  }, [user?.id]);
+
+  // Load blocked users
+  useEffect(() => {
+    if (!user) {
+      setBlockedUserIds(new Set());
+      return;
+    }
+    loadBlockedUsers(user.id).then((ids) => setBlockedUserIds(new Set(ids)));
   }, [user?.id]);
 
   // Fetch community reflections from user_answers (shared_at IS NOT NULL)
@@ -329,11 +347,34 @@ export const ReflectionProvider = ({ children }: { children: ReactNode }) => {
     [store.answers, isShared, shareReflection]
   );
 
+  // Filter out blocked users from the community feed
+  const filteredFeed = useMemo(
+    () => communityFeed.filter((r) => !blockedUserIds.has(r.userId)),
+    [communityFeed, blockedUserIds]
+  );
+
+  const reportReflection = useCallback(
+    async (reflectionId: string, reportedUserId: string, reason: string) => {
+      if (!user) return;
+      await apiReportReflection(user.id, reportedUserId, reflectionId, reason);
+    },
+    [user]
+  );
+
+  const blockUser = useCallback(
+    async (blockedUserId: string) => {
+      if (!user) return;
+      await apiBlockUser(user.id, blockedUserId);
+      setBlockedUserIds((prev) => new Set([...prev, blockedUserId]));
+    },
+    [user]
+  );
+
   return (
     <ReflectionContext.Provider
       value={{
         answers: store.answers,
-        communityFeed,
+        communityFeed: filteredFeed,
         isLoading,
         updateAnswer,
         getAnswer,
@@ -342,6 +383,8 @@ export const ReflectionProvider = ({ children }: { children: ReactNode }) => {
         shareReflection,
         shareToggledAnswers,
         isShared,
+        reportReflection,
+        blockUser,
       }}
     >
       {children}

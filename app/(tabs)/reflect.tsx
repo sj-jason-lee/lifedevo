@@ -18,7 +18,7 @@ type ReflectionGroup = SharedReflection[];
 
 export default function ReflectScreen() {
   const insets = useSafeAreaInsets();
-  const { communityFeed, isLoading } = useReflections();
+  const { communityFeed, isLoading, reportReflection, blockUser } = useReflections();
   const { church, memberCount, isLoading: churchLoading } = useChurch();
   const hasChurch = !churchLoading && !!church;
 
@@ -39,8 +39,10 @@ export default function ReflectScreen() {
     <ReflectionCard
       reflections={item}
       index={index}
+      onReport={reportReflection}
+      onBlock={blockUser}
     />
-  ), []);
+  ), [reportReflection, blockUser]);
 
   const keyExtractor = useCallback((item: ReflectionGroup) =>
     `${item[0].devotionalId}-${item[0].userId}`, []);

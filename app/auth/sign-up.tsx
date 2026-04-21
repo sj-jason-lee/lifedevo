@@ -18,6 +18,10 @@ import Animated, {
 import { router } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import Constants from 'expo-constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 import { FontFamily, TypeScale } from '../../constants/typography';
@@ -31,7 +35,7 @@ const AnimatedView = Animated.View;
 
 export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
-  const { signUpWithEmail, signInWithGoogle } = useAuth();
+  const { signUpWithEmail, signInWithGoogle, signInWithApple } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -109,6 +113,14 @@ export default function SignUpScreen() {
     setError('');
     setLoading(true);
     const { error: err } = await signInWithGoogle();
+    setLoading(false);
+    if (err) setError(err);
+  };
+
+  const handleApple = async () => {
+    setError('');
+    setLoading(true);
+    const { error: err } = await signInWithApple();
     setLoading(false);
     if (err) setError(err);
   };
@@ -244,11 +256,44 @@ export default function SignUpScreen() {
 
           {/* Social Buttons */}
           <Animated.View style={socialFade}>
+            {Platform.OS === 'ios' && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={Config.radius.md}
+                style={styles.appleButton}
+                onPress={handleApple}
+              />
+            )}
             <AnimatedPressable style={styles.socialButton} onPress={handleGoogle}>
               <Ionicons name="logo-google" size={20} color={Colors.textPrimary} />
               <Text style={styles.socialText}>Google</Text>
             </AnimatedPressable>
           </Animated.View>
+
+          {/* Legal Consent */}
+          <View style={styles.legalFooter}>
+            <Text style={styles.legalText}>
+              By creating an account, you agree to our{' '}
+            </Text>
+            <Pressable
+              onPress={() => {
+                const url = Constants.expoConfig?.extra?.termsUrl;
+                if (url) WebBrowser.openBrowserAsync(url);
+              }}
+            >
+              <Text style={styles.legalLink}>Terms</Text>
+            </Pressable>
+            <Text style={styles.legalText}> and </Text>
+            <Pressable
+              onPress={() => {
+                const url = Constants.expoConfig?.extra?.privacyUrl;
+                if (url) WebBrowser.openBrowserAsync(url);
+              }}
+            >
+              <Text style={styles.legalLink}>Privacy Policy</Text>
+            </Pressable>
+          </View>
 
           {/* Footer Link */}
           <View style={styles.footerRow}>
@@ -404,6 +449,10 @@ const styles = StyleSheet.create({
   },
 
   // Social Buttons
+  appleButton: {
+    height: 56,
+    marginBottom: 12,
+  },
   socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -420,6 +469,25 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.headingSemiBold,
     fontSize: 16,
     color: Colors.textPrimary,
+  },
+
+  // Legal consent
+  legalFooter: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 16,
+    paddingHorizontal: 8,
+  },
+  legalText: {
+    ...TypeScale.caption,
+    color: Colors.textMuted,
+    lineHeight: 20,
+  },
+  legalLink: {
+    ...TypeScale.caption,
+    color: Colors.accent,
+    lineHeight: 20,
   },
 
   // Footer

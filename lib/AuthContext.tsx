@@ -6,8 +6,10 @@ import {
   useCallback,
   ReactNode,
 } from 'react';
+import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import * as WebBrowser from 'expo-web-browser';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { makeRedirectUri } from 'expo-auth-session';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session, User } from '@supabase/supabase-js';
@@ -23,6 +25,7 @@ interface AuthContextValue {
   signUpWithEmail: (email: string, password: string) => Promise<{ error: string | null; needsConfirmation: boolean }>;
   resendConfirmation: (email: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
+  signInWithApple: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<{ error: string | null }>;
 }
@@ -144,6 +147,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const signInWithApple = useCallback(async (): Promise<{ error: string | null }> => {
+    try {
+      if (Platform.OS !== 'ios') {
+        return { error: 'Apple Sign-In is only available on iOS.' };
+      }
+
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        return { error: 'No identity token returned from Apple.' };
+      }
+
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+      });
+
+      if (error) return { error: error.message };
+      return { error: null };
+    } catch (e: any) {
+      if (e.code === 'ERR_REQUEST_CANCELED') {
+        return { error: null }; // user cancelled
+      }
+      logger.debug('[AppleAuth] unexpected error:', e.message);
+      return { error: e.message ?? 'An unexpected error occurred.' };
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, []);
@@ -176,6 +212,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signUpWithEmail,
         resendConfirmation,
         signInWithGoogle,
+        signInWithApple,
         signOut,
         deleteAccount,
       }}

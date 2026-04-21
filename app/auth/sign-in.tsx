@@ -18,6 +18,7 @@ import Animated, {
 import { router } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/colors';
 import { FontFamily, TypeScale } from '../../constants/typography';
@@ -31,7 +32,7 @@ const AnimatedView = Animated.View;
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
-  const { signInWithEmail, signInWithGoogle } = useAuth();
+  const { signInWithEmail, signInWithGoogle, signInWithApple } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -86,6 +87,14 @@ export default function SignInScreen() {
     setError('');
     setLoading(true);
     const { error: err } = await signInWithGoogle();
+    setLoading(false);
+    if (err) setError(err);
+  };
+
+  const handleApple = async () => {
+    setError('');
+    setLoading(true);
+    const { error: err } = await signInWithApple();
     setLoading(false);
     if (err) setError(err);
   };
@@ -205,6 +214,15 @@ export default function SignInScreen() {
 
           {/* Social Buttons */}
           <Animated.View style={socialFade}>
+            {Platform.OS === 'ios' && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={Config.radius.md}
+                style={styles.appleButton}
+                onPress={handleApple}
+              />
+            )}
             <AnimatedPressable style={styles.socialButton} onPress={handleGoogle}>
               <Ionicons name="logo-google" size={20} color={Colors.textPrimary} />
               <Text style={styles.socialText}>Google</Text>
@@ -359,6 +377,10 @@ const styles = StyleSheet.create({
   },
 
   // Social Buttons
+  appleButton: {
+    height: 56,
+    marginBottom: 12,
+  },
   socialButton: {
     flexDirection: 'row',
     alignItems: 'center',

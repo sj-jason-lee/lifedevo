@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -20,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
+import * as WebBrowser from 'expo-web-browser';
 import { Colors } from '../constants/colors';
 import { FontFamily, TypeScale } from '../constants/typography';
 import { Config } from '../constants/config';
@@ -331,8 +333,13 @@ export default function SettingsScreen() {
   const accountFade = useFadeIn(Config.animation.stagger.card);
   const notifFade = useFadeIn(Config.animation.stagger.card * 2);
   const aboutFade = useFadeIn(Config.animation.stagger.card * 3);
-  const actionsFade = useFadeIn(Config.animation.stagger.card * 4);
-  const dangerFade = useFadeIn(Config.animation.stagger.card * 5);
+  const legalFade = useFadeIn(Config.animation.stagger.card * 4);
+  const actionsFade = useFadeIn(Config.animation.stagger.card * 5);
+  const dangerFade = useFadeIn(Config.animation.stagger.card * 6);
+
+  const privacyUrl = Constants.expoConfig?.extra?.privacyUrl as string | undefined;
+  const termsUrl = Constants.expoConfig?.extra?.termsUrl as string | undefined;
+  const supportEmail = Constants.expoConfig?.extra?.supportEmail as string | undefined;
 
   return (
     <View style={styles.container}>
@@ -436,6 +443,45 @@ export default function SettingsScreen() {
             <ReadOnlyRow label="APP" value={Config.appName} />
             <View style={styles.rowDivider} />
             <ReadOnlyRow label="VERSION" value={appVersion} />
+          </GradientCard>
+        </Animated.View>
+
+        {/* Legal Section */}
+        <Animated.View style={legalFade}>
+          <Text style={styles.sectionHeading}>Legal</Text>
+          <GradientCard style={styles.sectionCard}>
+            {privacyUrl && (
+              <AnimatedPressable
+                style={styles.legalRow}
+                onPress={() => WebBrowser.openBrowserAsync(privacyUrl)}
+              >
+                <Feather name="shield" size={18} color={Colors.textSecondary} />
+                <Text style={styles.legalRowText}>Privacy Policy</Text>
+                <Feather name="external-link" size={16} color={Colors.textMuted} />
+              </AnimatedPressable>
+            )}
+            {privacyUrl && termsUrl && <View style={styles.rowDivider} />}
+            {termsUrl && (
+              <AnimatedPressable
+                style={styles.legalRow}
+                onPress={() => WebBrowser.openBrowserAsync(termsUrl)}
+              >
+                <Feather name="file-text" size={18} color={Colors.textSecondary} />
+                <Text style={styles.legalRowText}>Terms of Service</Text>
+                <Feather name="external-link" size={16} color={Colors.textMuted} />
+              </AnimatedPressable>
+            )}
+            {(privacyUrl || termsUrl) && supportEmail && <View style={styles.rowDivider} />}
+            {supportEmail && (
+              <AnimatedPressable
+                style={styles.legalRow}
+                onPress={() => Linking.openURL(`mailto:${supportEmail}`)}
+              >
+                <Feather name="mail" size={18} color={Colors.textSecondary} />
+                <Text style={styles.legalRowText}>Contact Support</Text>
+                <Feather name="external-link" size={16} color={Colors.textMuted} />
+              </AnimatedPressable>
+            )}
           </GradientCard>
         </Animated.View>
 
@@ -641,6 +687,19 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: Colors.textMuted,
     marginHorizontal: 6,
+  },
+
+  // Legal
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+  },
+  legalRowText: {
+    ...TypeScale.body,
+    color: Colors.textPrimary,
+    flex: 1,
   },
 
   // Sign out

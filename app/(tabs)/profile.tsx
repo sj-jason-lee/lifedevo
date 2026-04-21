@@ -191,7 +191,7 @@ export default function ProfileScreen() {
   const { answers } = useReflections();
   const { userName, initials, isAuthor, isAdmin } = useOnboarding();
   const { church, memberCount, isLoading: churchLoading } = useChurch();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const churchId = churchLoading ? undefined : church?.id ?? null;
   const { getById } = useDevotionals(churchId);
 
@@ -207,6 +207,15 @@ export default function ProfileScreen() {
     () => collectUserReflections(answers, getById),
     [answers, getById]
   );
+
+  const memberSince = useMemo(() => {
+    const createdAt = user?.created_at;
+    if (!createdAt) return '';
+    const date = new Date(createdAt);
+    const month = date.toLocaleDateString('en-US', { month: 'long' }).toUpperCase();
+    const year = date.getFullYear();
+    return `MEMBER SINCE ${month} ${year}`;
+  }, [user?.created_at]);
 
   const headerFade = useFadeIn(0);
   const avatarFade = useFadeIn(Config.animation.stagger.card);
@@ -247,7 +256,7 @@ export default function ProfileScreen() {
             <Text style={styles.avatarInitials}>{initials}</Text>
           </View>
           <Text style={styles.userName}>{userName}</Text>
-          <Text style={styles.memberSince}>MEMBER SINCE FEBRUARY 2026</Text>
+          <Text style={styles.memberSince}>{memberSince}</Text>
         </Animated.View>
 
         {/* Stats Row */}

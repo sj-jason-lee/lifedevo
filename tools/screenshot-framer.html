@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pasture — App Store Screenshot Framer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #111;
+    color: #eee;
+    min-height: 100vh;
+  }
+
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #1a1a1a;
+    border-bottom: 1px solid #333;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .toolbar h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #C9A84C;
+    white-space: nowrap;
+  }
+  .toolbar select, .toolbar button {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #444;
+    background: #222;
+    color: #eee;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .toolbar button {
+    background: #C9A84C;
+    color: #111;
+    border: none;
+    font-weight: 600;
+  }
+  .toolbar button:hover { background: #d4af5a; }
+  .toolbar .spacer { flex: 1; }
+  .toolbar .hint {
+    font-size: 13px;
+    color: #888;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 32px;
+    padding: 32px;
+    max-width: 1800px;
+    margin: 0 auto;
+  }
+
+  .slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .slot-label {
+    font-size: 14px;
+    color: #888;
+    font-weight: 500;
+  }
+
+  /* Frame preview (scaled down for display) */
+  .frame-preview {
+    width: 300px;
+    aspect-ratio: 1290 / 2796;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .frame-preview:hover { transform: scale(1.02); }
+
+  .frame-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(170deg, #FAF8F5 0%, #f0ece5 40%, #e8e2d8 100%);
+  }
+
+  .frame-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 36px 24px 0;
+    z-index: 2;
+    text-align: center;
+  }
+  .frame-headline {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1A1A1A;
+    line-height: 1.15;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
+  }
+  .frame-subtitle {
+    font-size: 11px;
+    color: #6B6B6B;
+    line-height: 1.4;
+    font-weight: 400;
+  }
+
+  .frame-device {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 82%;
+    aspect-ratio: 1290 / 2796;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #1a1a1a;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+    border: 2px solid #333;
+  }
+
+  .frame-device img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .frame-device .placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #555;
+    font-size: 13px;
+  }
+  .placeholder svg {
+    width: 32px;
+    height: 32px;
+    stroke: #555;
+    fill: none;
+    stroke-width: 1.5;
+  }
+
+  .slot input[type="file"] { display: none; }
+
+  .slot-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .slot-actions button {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #222;
+    color: #ccc;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .slot-actions button:hover { background: #333; }
+  .slot-actions button.primary {
+    background: #C9A84C;
+    color: #111;
+    border-color: #C9A84C;
+    font-weight: 600;
+  }
+
+  /* Hidden canvases for export */
+  .export-area { display: none; }
+
+  /* Toast notification */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #C9A84C;
+    color: #111;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: transform 0.3s ease;
+    z-index: 200;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>Pasture Screenshot Framer</h1>
+  <div class="hint">Click a frame to upload a simulator screenshot</div>
+  <div class="spacer"></div>
+  <select id="sizeSelect">
+    <option value="6.7">6.7" — 1290 x 2796</option>
+    <option value="5.5">5.5" — 1242 x 2208</option>
+  </select>
+  <button onclick="exportAll()">Export All</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="toast" id="toast"></div>
+<div class="export-area"><canvas id="exportCanvas"></canvas></div>
+
+<script>
+const SCREENSHOTS = [
+  {
+    id: 'home',
+    label: 'Screenshot 1 — Home',
+    headline: 'Start Each Day\nWith Purpose',
+    subtitle: 'Daily devotionals from your church',
+  },
+  {
+    id: 'devotional',
+    label: 'Screenshot 2 — Devotional',
+    headline: 'Scripture, Reflection,\nPrayer',
+    subtitle: 'Everything in one beautiful reading experience',
+  },
+  {
+    id: 'reflect',
+    label: 'Screenshot 3 — Reflection',
+    headline: 'Go Deeper',
+    subtitle: 'Guided questions to grow your understanding',
+  },
+  {
+    id: 'community',
+    label: 'Screenshot 4 — Community',
+    headline: 'Grow Together',
+    subtitle: 'See how your church reflects on the same passages',
+  },
+  {
+    id: 'plans',
+    label: 'Screenshot 5 — Reading Plans',
+    headline: 'Build a\nDaily Habit',
+    subtitle: 'Follow reading plans and track your progress',
+  },
+];
+
+const SIZES = {
+  '6.7': { w: 1290, h: 2796 },
+  '5.5': { w: 1242, h: 2208 },
+};
+
+const images = {};
+
+function buildGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  SCREENSHOTS.forEach((s, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    slot.innerHTML = `
+      <div class="slot-label">${s.label}</div>
+      <div class="frame-preview" id="frame-${s.id}" onclick="pickImage('${s.id}')">
+        <div class="frame-bg"></div>
+        <div class="frame-text">
+          <div class="frame-headline">${s.headline.replace(/\n/g, '<br>')}</div>
+          <div class="frame-subtitle">${s.subtitle}</div>
+        </div>
+        <div class="frame-device" id="device-${s.id}">
+          <div class="placeholder">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            <span>Click to upload</span>
+          </div>
+        </div>
+      </div>
+      <input type="file" id="input-${s.id}" accept="image/*" onchange="handleFile('${s.id}', this)">
+      <div class="slot-actions">
+        <button onclick="pickImage('${s.id}')">Upload</button>
+        <button class="primary" onclick="exportOne('${s.id}')">Export</button>
+      </div>
+    `;
+    grid.appendChild(slot);
+  });
+}
+
+function pickImage(id) {
+  document.getElementById(`input-${id}`).click();
+}
+
+function handleFile(id, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      images[id] = img;
+      const device = document.getElementById(`device-${id}`);
+      device.innerHTML = '';
+      const imgEl = document.createElement('img');
+      imgEl.src = e.target.result;
+      device.appendChild(imgEl);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function getSize() {
+  return SIZES[document.getElementById('sizeSelect').value];
+}
+
+function renderToCanvas(screenshotDef, canvas) {
+  const size = getSize();
+  canvas.width = size.w;
+  canvas.height = size.h;
+  const ctx = canvas.getContext('2d');
+  const s = size.w / 1290; // scale factor relative to 6.7"
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, size.w * 0.15, size.h);
+  grad.addColorStop(0, '#FAF8F5');
+  grad.addColorStop(0.4, '#f0ece5');
+  grad.addColorStop(1, '#e8e2d8');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size.w, size.h);
+
+  // Headline text
+  const headlineFontSize = Math.round(86 * s);
+  ctx.fillStyle = '#1A1A1A';
+  ctx.font = `700 ${headlineFontSize}px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+
+  const lines = screenshotDef.headline.split('\n');
+  const lineHeight = headlineFontSize * 1.15;
+  const headlineY = Math.round(140 * s);
+  lines.forEach((line, i) => {
+    ctx.fillText(line, size.w / 2, headlineY + i * lineHeight);
+  });
+
+  // Subtitle
+  const subtitleFontSize = Math.round(40 * s);
+  ctx.fillStyle = '#6B6B6B';
+  ctx.font = `400 ${subtitleFontSize}px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif`;
+  const subtitleY = headlineY + lines.length * lineHeight + Math.round(20 * s);
+  ctx.fillText(screenshotDef.subtitle, size.w / 2, subtitleY);
+
+  // Device frame
+  const deviceW = Math.round(size.w * 0.82);
+  const deviceH = Math.round(deviceW * (2796 / 1290));
+  const deviceX = Math.round((size.w - deviceW) / 2);
+  const deviceY = size.h - deviceH - Math.round(60 * s);
+  const deviceR = Math.round(48 * s);
+
+  // Device shadow
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.2)';
+  ctx.shadowBlur = 40 * s;
+  ctx.shadowOffsetY = 12 * s;
+  roundRect(ctx, deviceX, deviceY, deviceW, deviceH, deviceR);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fill();
+  ctx.restore();
+
+  // Device border
+  ctx.save();
+  roundRect(ctx, deviceX, deviceY, deviceW, deviceH, deviceR);
+  ctx.strokeStyle = '#3a3a3a';
+  ctx.lineWidth = 3 * s;
+  ctx.stroke();
+
+  // Clip and draw screenshot image
+  ctx.clip();
+  const img = images[screenshotDef.id];
+  if (img) {
+    // Fill the device frame, maintaining aspect ratio (cover)
+    const imgAspect = img.width / img.height;
+    const deviceAspect = deviceW / deviceH;
+    let drawW, drawH, drawX, drawY;
+    if (imgAspect > deviceAspect) {
+      drawH = deviceH;
+      drawW = deviceH * imgAspect;
+      drawX = deviceX - (drawW - deviceW) / 2;
+      drawY = deviceY;
+    } else {
+      drawW = deviceW;
+      drawH = deviceW / imgAspect;
+      drawX = deviceX;
+      drawY = deviceY;
+    }
+    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+  } else {
+    ctx.fillStyle = '#222';
+    ctx.fillRect(deviceX, deviceY, deviceW, deviceH);
+    ctx.fillStyle = '#555';
+    ctx.font = `400 ${Math.round(32 * s)}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('No screenshot uploaded', deviceX + deviceW / 2, deviceY + deviceH / 2);
+  }
+  ctx.restore();
+
+  // Notch / Dynamic Island
+  const notchW = Math.round(120 * s);
+  const notchH = Math.round(36 * s);
+  const notchX = deviceX + (deviceW - notchW) / 2;
+  const notchY = deviceY + Math.round(18 * s);
+  ctx.fillStyle = '#000';
+  roundRect(ctx, notchX, notchY, notchW, notchH, notchH / 2);
+  ctx.fill();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function exportOne(id) {
+  const def = SCREENSHOTS.find(s => s.id === id);
+  if (!def) return;
+  const canvas = document.getElementById('exportCanvas');
+  renderToCanvas(def, canvas);
+  downloadCanvas(canvas, `pasture-${id}-${document.getElementById('sizeSelect').value}.png`);
+  showToast(`Exported ${def.label}`);
+}
+
+function exportAll() {
+  const canvas = document.getElementById('exportCanvas');
+  SCREENSHOTS.forEach((def, i) => {
+    renderToCanvas(def, canvas);
+    setTimeout(() => {
+      downloadCanvas(canvas, `pasture-${i + 1}-${def.id}-${document.getElementById('sizeSelect').value}.png`);
+    }, i * 300);
+  });
+  showToast(`Exporting ${SCREENSHOTS.length} screenshots...`);
+}
+
+function downloadCanvas(canvas, filename) {
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// Init
+buildGrid();
+</script>
+</body>
+</html>

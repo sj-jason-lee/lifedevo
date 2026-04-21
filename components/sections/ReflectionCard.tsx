@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Alert, ActionSheetIOS, Platform, Pressable } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { FontFamily, TypeScale } from '../../constants/typography';
 import { Config } from '../../constants/config';
@@ -11,6 +12,8 @@ import type { SharedReflection } from '../../types';
 interface ReflectionCardProps {
   reflections: SharedReflection[];
   index: number;
+  onReport?: (reflectionId: string, reportedUserId: string, reason: string) => void;
+  onBlock?: (blockedUserId: string) => void;
 }
 
 const formatRelativeDate = (dateStr: string): string => {
@@ -27,13 +30,124 @@ const formatRelativeDate = (dateStr: string): string => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
+const showReportPrompt = (
+  reflectionId: string,
+  reportedUserId: string,
+  onReport: (reflectionId: string, reportedUserId: string, reason: string) => void
+) => {
+  const reasons = ['Inappropriate content', 'Spam', 'Harassment', 'Other'];
+
+  if (Platform.OS === 'ios') {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: [...reasons, 'Cancel'],
+        cancelButtonIndex: reasons.length,
+        title: 'Report Reflection',
+        message: 'Why are you reporting this?',
+      },
+      (buttonIndex) => {
+        if (buttonIndex < reasons.length) {
+          onReport(reflectionId, reportedUserId, reasons[buttonIndex]);
+          Alert.alert('Reported', 'Thank you. We will review this reflection.');
+        }
+      }
+    );
+  } else {
+    Alert.alert(
+      'Report Reflection',
+      'Why are you reporting this?',
+      [
+        ...reasons.map((reason) => ({
+          text: reason,
+          onPress: () => {
+            onReport(reflectionId, reportedUserId, reason);
+            Alert.alert('Reported', 'Thank you. We will review this reflection.');
+          },
+        })),
+        { text: 'Cancel', style: 'cancel' as const },
+      ]
+    );
+  }
+};
+
+const showActionMenu = (
+  first: SharedReflection,
+  onReport?: (reflectionId: string, reportedUserId: string, reason: string) => void,
+  onBlock?: (blockedUserId: string) => void
+) => {
+  if (Platform.OS === 'ios') {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: ['Report', 'Block User', 'Cancel'],
+        destructiveButtonIndex: 1,
+        cancelButtonIndex: 2,
+      },
+      (buttonIndex) => {
+        if (buttonIndex === 0 && onReport) {
+          showReportPrompt(first.id, first.userId, onReport);
+        } else if (buttonIndex === 1 && onBlock) {
+          Alert.alert(
+            'Block User',
+            `You won't see reflections from ${first.authorName} anymore. You can unblock them in Settings.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Block',
+                style: 'destructive',
+                onPress: () => onBlock(first.userId),
+              },
+            ]
+          );
+        }
+      }
+    );
+  } else {
+    Alert.alert(
+      '',
+      '',
+      [
+        {
+          text: 'Report',
+          onPress: () => {
+            if (onReport) showReportPrompt(first.id, first.userId, onReport);
+          },
+        },
+        {
+          text: 'Block User',
+          style: 'destructive',
+          onPress: () => {
+            if (onBlock) {
+              Alert.alert(
+                'Block User',
+                `You won't see reflections from ${first.authorName} anymore. You can unblock them in Settings.`,
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Block',
+                    style: 'destructive',
+                    onPress: () => onBlock(first.userId),
+                  },
+                ]
+              );
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  }
+};
+
 export const ReflectionCard = React.memo(({
   reflections,
   index,
+  onReport,
+  onBlock,
 }: ReflectionCardProps): JSX.Element => {
   const fadeIn = useFadeIn(index * Config.animation.stagger.card);
   const first = reflections[0];
   const isUser = first.isCurrentUser;
+  const showMenu = !isUser && (onReport || onBlock);
 
   const cardColors: readonly [string, string, ...string[]] = isUser
     ? [Colors.accentSoft, Colors.surfaceElevated]
@@ -71,6 +185,15 @@ export const ReflectionCard = React.memo(({
               {first.devotionalTitle}
             </Text>
           </View>
+          {showMenu && (
+            <Pressable
+              onPress={() => showActionMenu(first, onReport, onBlock)}
+              hitSlop={12}
+              style={styles.menuButton}
+            >
+              <Feather name="more-horizontal" size={20} color={Colors.textMuted} />
+            </Pressable>
+          )}
         </View>
 
         {/* Divider */}
@@ -150,6 +273,9 @@ const styles = StyleSheet.create({
     ...TypeScale.mono,
     color: Colors.textMuted,
     marginTop: 2,
+  },
+  menuButton: {
+    padding: 4,
   },
   divider: {
     height: 1,
